@@ -1,0 +1,560 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    §3.3.2.7  SW Interaction Description
+    Extended by: SW to Diagnostics Interaction Description (§3.5.2.5)
+
+    Produced by tasks:
+      "Define Interaction with Applications"       (§3.3.1.2)
+      "Define Interaction with Functional Clusters" (§3.3.1.3)
+
+    Inputs consumed:
+      - Process Design Description:   executable_description.arxml
+      - SW Composition Description:   executable_description.arxml
+      - SW Component Design:          sw_component_design.arxml
+      - Service Interface Desc.:      extended_vehicle_service_interface.arxml
+      - Functional Cluster Desc.:     doc/autosar_specs/AUTOSAR_AP_SWS_*.pdf
+
+    Outputs consumed by:
+      - "Associate content elements" (§3.9.1.4) — SW Cluster Design
+      - "Integrate Diagnostics"      (§3.10.1.5) — completes diagnostic mappings
+
+    ─────────────────────────────────────────────────────────────────────────
+    PURPOSE OF THIS DOCUMENT
+
+    The SW Interaction Description binds each port instance that exists in the
+    SW composition (defined in executable_description.arxml) to a concrete
+    communication partner or functional cluster endpoint.
+
+    The binding context for each interaction is the pair:
+      (port instance in the SW composition, Process Design that runs it)
+
+    In this project port instances live in:
+      Process:    AdaptiveAutosarProcess  (one instance per Machine)
+      Executable: AdaptiveAutosarExecutable
+      Composition root: AdaptiveAutosarRoot / AdaptiveAutosarComposition
+      Component instances:
+        ExtendedVehicleInstance  (ExtendedVehicleSwc)  — §§ 1–4 below
+        WatchdogInstance         (WatchdogSwc)          — § 5 below (PLANNED)
+
+    Two machine instances are deployed. They are differentiated by the manifest
+    files passed as command-line arguments — same binary, different configuration.
+    Interactions that cross machine boundaries are marked [CROSS-MACHINE].
+    ─────────────────────────────────────────────────────────────────────────
+-->
+<AUTOSAR
+    xmlns="http://autosar.org/schema/r4.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://autosar.org/schema/r4.0 autosar_00050.xsd">
+    <AR-PACKAGES>
+        <AR-PACKAGE>
+            <SHORT-NAME>SwInteractionDescription</SHORT-NAME>
+            <ELEMENTS>
+
+                <!-- ═══════════════════════════════════════════════════════
+                     SECTION 1 — APPLICATION-LEVEL INTERACTIONS  (§3.3.1.2)
+                     Port: ExtendedVehicleInstance / VehicleServicePPort
+                     Interface: ExtendedVehicleInterface (service ID 5)
+                     ═══════════════════════════════════════════════════════ -->
+
+                <!--
+                    Interaction 1a — SOME/IP Service Discovery  [CROSS-MACHINE]
+                    ─────────────────────────────────────────────────────────
+                    Provider port instance:
+                      AdaptiveAutosarProcess[Machine A or B]
+                        / AdaptiveAutosarRoot
+                        / ExtendedVehicleInstance
+                        / VehicleServicePPort
+
+                    Consumer:
+                      DiagnosticManager (platform-level process, same or remote machine)
+                      REQUIRED-SOMEIP-SERVICE-INSTANCE in diagnostic_manager_manifest.arxml
+
+                    Mechanism:
+                      SOME/IP Service Discovery (SD) over UDP multicast.
+                      ExtendedVehicle sends SD Offer; DiagnosticManager sends SD Find.
+                      Both use the same socket (SdNetworkLayer) bound to:
+                        Multicast group: 239.0.0.1
+                        Port:            5555  (EVENT-MULTICAST-UDP-PORT)
+                      Session ID increments per sender — the only runtime
+                      distinguisher between Machine A and Machine B SD traffic
+                      when using Instance ID ANY on the consumer side.
+
+                    SD server configuration (from extended_vehicle_manifest.arxml):
+                      Service ID:       5 (0x0005)
+                      Instance ID:      0 (Machine A) / 1 (Machine B)
+                      Major version:    1
+                      Minor version:    0
+                      Initial offer delay: 100–200 ms random
+                      Offered endpoint: 127.0.0.1:8081 (Machine A)
+                                        127.0.0.1:8082 (Machine B)
+
+                    SD client configuration (from diagnostic_manager_manifest.arxml):
+                      Service ID:       5 (0x0005)
+                      Instance ID:      ANY (0xFFFF)  ← design gap, see note
+                      Initial find delay: 100–200 ms random
+
+                    Design gap — Instance ID ANY:
+                      The consumer does not filter by instance. On the same host,
+                      Machine B's DiagnosticManager may discover Machine B's own
+                      ExtendedVehicle (Instance 1) instead of Machine A's
+                      (Instance 0). Recommendation: set Instance ID to 0 in
+                      Machine B's diagnostic_manager_manifest.arxml to enforce
+                      cross-machine discovery.
+
+                    C++ binding:
+                      Provider: mSdServer (SomeIpSdServer) in ExtendedVehicle::Main()
+                      Consumer: mSdClient (SomeIpSdClient) in DiagnosticManager::Main()
+                -->
+                <SW-CONNECTOR>
+                    <SHORT-NAME>VehicleServiceSdConnector</SHORT-NAME>
+                    <KIND>SERVICE-DISCOVERY</KIND>
+                    <TRANSPORT>SOME-IP-SD-UDP-MULTICAST</TRANSPORT>
+                    <PROVIDER-IREF>
+                        <PROCESS-DESIGN-REF>AdaptiveAutosarProcess</PROCESS-DESIGN-REF>
+                        <PORT-PROTOTYPE-IREF>
+                            AdaptiveAutosarRoot / ExtendedVehicleInstance / VehicleServicePPort
+                        </PORT-PROTOTYPE-IREF>
+                    </PROVIDER-IREF>
+                    <REQUIRER-IREF>
+                        <!-- DiagnosticManager — platform-level, no formal SWC instance -->
+                        <PROCESS>AdaptiveAutosarProcess (remote machine)</PROCESS>
+                        <MANIFEST>diagnostic_manager_manifest.arxml</MANIFEST>
+                        <ELEMENT>REQUIRED-SOMEIP-SERVICE-INSTANCE</ELEMENT>
+                    </REQUIRER-IREF>
+                </SW-CONNECTOR>
+
+                <!--
+                    Interaction 1b — DoIP Diagnostic Channel  [CROSS-MACHINE]
+                    ─────────────────────────────────────────────────────────
+                    This interaction is implicit in VehicleServicePPort but
+                    uses a different transport than SOME/IP.
+
+                    Provider port instance: same as 1a (VehicleServicePPort)
+                    Transport: DoIP over TCP unicast (ISO 13400-2)
+
+                    How it works:
+                      The SD Offer message (1a) carries the DoIP TCP endpoint
+                      in the SOME/IP SD Offer entry (ServerUnicastTcp field).
+                      After discovery, DiagnosticManager connects to that TCP
+                      endpoint and routes OBD-II diagnostic frames via DoIP.
+
+                    Endpoints (from extended_vehicle_manifest.arxml):
+                      Machine A: 127.0.0.1:8081  (ServerUnicastTcp, TCP)
+                      Machine B: 127.0.0.1:8082  (ServerUnicastTcp, TCP)
+
+                    DoIP configuration (from extended_vehicle_manifest.arxml):
+                      Logical address:  1 (Machine A) / 2 (Machine B)
+                      EID:              1 (Machine A) / 2 (Machine B)
+                      GID:              1 (shared)
+                      VIN:              "DEMO0000000000001" (demo mode)
+                      Announcement:     3 × every 1 s after startup
+
+                    C++ binding:
+                      Provider: mDoipServer (DoipServer) in ExtendedVehicle::Main()
+                      Consumer: mObdToDoipConverter (ObdToDoipConverter)
+                                in DiagnosticManager after SD discovery
+
+                    Note: DoIP connections visible in pcap as two brief TCP
+                    connections to port 8082 at t≈10 s (vehicle announcements),
+                    immediately closed by the client after receiving the
+                    announcement. Port 8081 absent in the captured run —
+                    Machine A's DoIP server had no client connecting during
+                    the capture window.
+                -->
+                <SW-CONNECTOR>
+                    <SHORT-NAME>VehicleServiceDoipConnector</SHORT-NAME>
+                    <KIND>DIAGNOSTIC-TRANSPORT</KIND>
+                    <TRANSPORT>DOIP-TCP-UNICAST</TRANSPORT>
+                    <PROVIDER-IREF>
+                        <PROCESS-DESIGN-REF>AdaptiveAutosarProcess</PROCESS-DESIGN-REF>
+                        <PORT-PROTOTYPE-IREF>
+                            AdaptiveAutosarRoot / ExtendedVehicleInstance / VehicleServicePPort
+                        </PORT-PROTOTYPE-IREF>
+                    </PROVIDER-IREF>
+                    <REQUIRER-IREF>
+                        <PROCESS>AdaptiveAutosarProcess (remote machine)</PROCESS>
+                        <MANIFEST>diagnostic_manager_manifest.arxml</MANIFEST>
+                        <ELEMENT>OBD-TO-DOIP converter (post SD discovery)</ELEMENT>
+                    </REQUIRER-IREF>
+                </SW-CONNECTOR>
+
+                <!--
+                    Interaction 1c — SOME/IP Pub/Sub Event  [CROSS-MACHINE]
+                    ─────────────────────────────────────────────────────────────────
+                    Provider port instance: VehicleServicePPort
+                    Event:     TelematicControlModuleEvent (VehicleStatusType)
+                    Event ID:  0x8001
+                    EventGroup: VehicleEventsGroup (ID 1)
+                    Transport: SOME/IP pub/sub over UDP multicast 239.0.0.1:5555
+
+                    Implementation status (two-layer split):
+
+                      Layer A — Subscription handshake (IMPLEMENTED):
+                        Provider: mPubSubServer (SomeIpPubSubServer) in ExtendedVehicle
+                          Handles SubscribeEventGroup SD messages.
+                          Replies with SubscribeEventGroupAck (multicast endpoint
+                          239.0.0.1:5555, EventGroup ID 1).
+                          EventGroup ID read from extended_vehicle_manifest.arxml.
+                          C++: configurePubSubServer() / mPubSubServer->Start()
+
+                      Layer B — Event data delivery (PLANNED):
+                        Provider side missing:
+                          SomeIpPubSubServer::Publish(VehicleStatusType) — not yet
+                          implemented. Would send SOME/IP NOTIFICATION frame
+                          (MessageType=0x02, MethodID=0x8001, service ID 5) to
+                          all subscribed multicast endpoints.
+                          Triggered each WaitForActivation cycle (or on state change).
+                        Consumer side missing:
+                          SOME/IP event frame decoder for non-SD SOME/IP messages
+                          on 239.0.0.1:5555 — currently SdNetworkLayer handles
+                          SD message format only.
+
+                    Primary consumer of this interaction:
+                      WatchdogInstance (§5 below) — heartbeat monitoring.
+                      DiagnosticManager (when Layer B implemented) — can replace
+                      its SD-state-based Monitor trigger with event-receipt-based
+                      reporting, making DTC U0198 more faithful to "Lost Communication".
+                -->
+                <SW-CONNECTOR>
+                    <SHORT-NAME>VehicleServiceEventConnector</SHORT-NAME>
+                    <KIND>EVENT-NOTIFICATION</KIND>
+                    <TRANSPORT>SOME-IP-PUBSUB-UDP-MULTICAST</TRANSPORT>
+                    <STATUS>PLANNED — NOT YET IMPLEMENTED</STATUS>
+                    <PROVIDER-IREF>
+                        <PROCESS-DESIGN-REF>AdaptiveAutosarProcess</PROCESS-DESIGN-REF>
+                        <PORT-PROTOTYPE-IREF>
+                            AdaptiveAutosarRoot / ExtendedVehicleInstance / VehicleServicePPort
+                        </PORT-PROTOTYPE-IREF>
+                        <EVENT-REF>TelematicControlModuleEvent</EVENT-REF>
+                        <EVENT-GROUP-ID>1</EVENT-GROUP-ID>
+                    </PROVIDER-IREF>
+                    <REQUIRER-IREF>
+                        <PROCESS>AdaptiveAutosarProcess (remote machine)</PROCESS>
+                        <MANIFEST>diagnostic_manager_manifest.arxml</MANIFEST>
+                    </REQUIRER-IREF>
+                </SW-CONNECTOR>
+
+                <!-- ═══════════════════════════════════════════════════════
+                     SECTION 2 — PLATFORM-LEVEL INTERACTIONS  (§3.3.1.3)
+                     Port: ExtendedVehicleInstance / HealthManagementRPort
+                     Interface: PlatformHealthManagementInterface
+                     ═══════════════════════════════════════════════════════ -->
+
+                <!--
+                    Interaction 2 — PHM Supervised Entity  [LOCAL, INTRA-PROCESS]
+                    ──────────────────────────────────────────────────────────────
+                    Port instance:
+                      ExtendedVehicleInstance / HealthManagementRPort
+
+                    FC endpoint:
+                      PlatformHealthManagement process (co-hosted in same binary)
+                      Receives checkpoints via FifoCheckpointCommunicator
+                      (named pipe: /tmp/fifo_<rpcPort>)
+
+                    Instance specifier binding:
+                      ara::core::InstanceSpecifier{"ExtendedVehicleSE"}
+                      Links the C++ SupervisedEntity to the PHM configuration
+                      in health_monitoring_manifest.arxml.
+
+                    Checkpoint sequence per WaitForActivation cycle (10 ms):
+                      1. ReportCheckpoint(AliveCheckpoint)          — I am alive
+                      2. ReportCheckpoint(DeadlineSourceCheckpoint)  — starting work
+                      3. WaitForActivation()                         — wait for next cycle
+                      4. ReportCheckpoint(DeadlineTargetCheckpoint)  — work done
+
+                    PHM supervision configuration (health_monitoring_manifest.arxml):
+                      ALIVE-REFERENCE-CYCLE:          100 ms
+                      EXPECTED-ALIVE-INDICATIONS:     10   (10 cycles × 10 ms = 100 ms)
+                      MIN-MARGIN / MAX-MARGIN:         ±5
+                      FAILED-REFERENCE-CYCLES-TOLERANCE: 100
+
+                    C++ binding:
+                      ara::phm::SupervisedEntity mSupervisedEntity{"ExtendedVehicleSE",
+                                                                    &mCommunicator}
+                      (src/application/extended_vehicle.h)
+                -->
+                <FC-PORT-INTERACTION>
+                    <SHORT-NAME>PhysicalHealthManagementBinding</SHORT-NAME>
+                    <PORT-PROTOTYPE-IREF>
+                        AdaptiveAutosarRoot / ExtendedVehicleInstance / HealthManagementRPort
+                    </PORT-PROTOTYPE-IREF>
+                    <FC-ENDPOINT>PlatformHealthManagement::FifoCheckpointCommunicator</FC-ENDPOINT>
+                    <INSTANCE-SPECIFIER>ExtendedVehicleSE</INSTANCE-SPECIFIER>
+                    <TRANSPORT>POSIX-NAMED-PIPE</TRANSPORT>
+                    <PIPE-PATH>/tmp/fifo_&lt;rpcPort&gt;</PIPE-PATH>
+                    <!-- rpcPort = 18080 (Machine A) / 18081 (Machine B) -->
+                    <CONFIGURATION-REF>health_monitoring_manifest.arxml</CONFIGURATION-REF>
+                </FC-PORT-INTERACTION>
+
+                <!-- ═══════════════════════════════════════════════════════
+                     SECTION 3 — API-BASED FC INTERACTIONS  (§3.3.1.3)
+                     No ports modelled. Documented for traceability.
+                     ═══════════════════════════════════════════════════════ -->
+
+                <!--
+                    Interaction 3a — ara::log (Log and Trace)
+                    ─────────────────────────────────────────
+                    Usage: ara::log::LogStream in every non-trivial method.
+                    Pattern:
+                      ara::log::LogStream _stream;
+                      _stream << "message";
+                      Log(cLogLevel, _stream);   // ModelledProcess helper
+                    No InstanceSpecifier — ara::log is a shared FC service,
+                    accessed by app ID ("ExtendedVehicle") set in the constructor.
+                    Not modelled as a port: pure API call, no configuration
+                    binding needed in this project.
+                -->
+
+                <!--
+                    Interaction 3b — ara::exec (Execution Management)
+                    ──────────────────────────────────────────────────
+                    Usage: ModelledProcess base class provides WaitForActivation().
+                    Internally uses DeterministicClient with cCycleDelayMs = 10 ms.
+                    Process lifecycle (Initialize / Main / Terminate) managed by
+                    ExecutionManagement orchestrator.
+
+                    InstanceSpecifier binding: not applicable — lifecycle managed
+                    by the owning ExecutionManagement, not by InstanceSpecifier.
+                    Configuration: execution_manifest.arxml
+                      FUNCTION-GROUPS / MachineFG → triggers process start.
+                      RPC server TCP port: 18080 (Machine A) / 18081 (Machine B).
+                -->
+
+                <!--
+                    Interaction 3c — ara::diag (Diagnostic Management, passive)
+                    ─────────────────────────────────────────────────────────────
+                    Usage: Conversation::GetCurrentActiveConversations()
+                    Called once at shutdown to log whether any UDS sessions
+                    were open when ExtendedVehicle terminated.
+                    Single static API call — no InstanceSpecifier, no sustained
+                    interaction. Not modelled as a port.
+                -->
+
+                <!-- ═══════════════════════════════════════════════════════
+                     SECTION 4 — SW TO DIAGNOSTICS INTERACTION  (§3.5.2.5)
+                     Extension of SW Interaction Description.
+                     Produced during "Integrate Diagnostics" (§3.10.1.5).
+                     ═══════════════════════════════════════════════════════ -->
+
+                <!--
+                    Diagnostic Interaction — DTC U0198 Monitor
+                    ────────────────────────────────────────────────────────
+                    This interaction maps the diagnostic monitor/event pair
+                    in DiagnosticManager to the DTC U0198 and to the service
+                    availability state of VehicleServicePPort.
+
+                    Note: DiagnosticManager is a platform-level process.
+                    This mapping would appear in a platform-level SW Component
+                    Design. It is included here because:
+                      (a) It is the diagnostic consequence of the application-level
+                          service interaction in Section 1.
+                      (b) It completes the traceability chain from the SOME/IP
+                          service interface to the DTC stored in the vehicle.
+
+                    Mapping:
+                      SOME/IP SD state of service 5 (VehicleServicePPort)
+                        ServiceReady / ServiceSeen
+                          → DiagnosticManager::mMonitor->ReportMonitorAction(kPrepassed)
+                          → After TIME-PASSED-THRESHOLD (6000 ms): kFinallyHealed
+                          → Effect: DTC U0198 healed; OBD-II bridge activated
+                        ServiceNotSeen / Stopped
+                          → DiagnosticManager::mMonitor->ReportMonitorAction(kPrefailed)
+                          → After TIME-FAILED-THRESHOLD (6000 ms): kFinallyDefective
+                          → Effect: DTC U0198 stored (DTC number: 49560 / 0xC198)
+
+                    InstanceSpecifier bindings:
+                      "TelematicControlModuleMonitor"
+                          → DIAGNOSTIC-MONITOR-INTERFACE in
+                             diagnostic_manager_manifest.arxml
+                             (debounce: 6000 ms passed / 6000 ms failed)
+                      "TelematicControlModuleEvent"
+                          → DIAGNOSTIC-EVENT-INTERFACE in
+                             diagnostic_manager_manifest.arxml
+                             (DTC-NUMBER: 49560)
+
+                    Future state (when Interaction 1c is implemented):
+                      The trigger for kPrepassed/kPrefailed will shift from
+                      SD state to TelematicControlModuleEvent receipt/timeout.
+                      This makes the DTC logic more faithful to its name:
+                      "Lost Communication" will mean "no event received within
+                      6000 ms" rather than "SD service not offered".
+                -->
+                <!-- ═══════════════════════════════════════════════════════
+                     SECTION 5 — WATCHDOG APPLICATION INTERACTIONS  (§3.3.1.2/3)
+                     Port: WatchdogInstance / VehicleServiceRPort
+                     Interface: ExtendedVehicleInterface (service ID 5, remote instance)
+                     Status: PLANNED — WatchdogApplication not yet implemented
+                     ═══════════════════════════════════════════════════════ -->
+
+                <!--
+                    Interaction 5a — SD Find/Discover  [CROSS-MACHINE]
+                    ──────────────────────────────────────────────────
+                    Consumer port instance:
+                      AdaptiveAutosarProcess[Machine A or B]
+                        / AdaptiveAutosarRoot
+                        / WatchdogInstance
+                        / VehicleServiceRPort
+
+                    Provider:
+                      ExtendedVehicleInstance on the REMOTE machine.
+                        Machine A watchdog → finds Instance ID 1 (Machine B EV)
+                        Machine B watchdog → finds Instance ID 0 (Machine A EV)
+
+                    Mechanism:
+                      SOME/IP SD FindService over UDP multicast 239.0.0.1:5555.
+                      Remote ExtendedVehicle replies with OfferService.
+                      WatchdogApp uses the offered endpoint to know which
+                      SubscribeEventGroup to send (Interaction 5b).
+
+                    SD client configuration (from watchdog_manifest.arxml):
+                      Service ID:       5 (0x0005)
+                      Instance ID:      1 (Machine A manifest)
+                                     or 0 (Machine B manifest) — explicit, not ANY
+                      Major version:    1
+                      Initial find delay: 100–200 ms random
+
+                    Design note — Instance ID specificity:
+                      Unlike DiagnosticManager (which uses Instance ID ANY), the
+                      Watchdog targets the remote instance explicitly. This guarantees
+                      the watchdog monitors the OTHER machine, not itself, and resolves
+                      the Instance ID ANY design gap documented in §1a.
+
+                    C++ binding (planned):
+                      mSdClient (SomeIpSdClient) in WatchdogApplication::Main()
+                -->
+                <SW-CONNECTOR>
+                    <SHORT-NAME>WatchdogSdConnector</SHORT-NAME>
+                    <KIND>SERVICE-DISCOVERY</KIND>
+                    <STATUS>PLANNED</STATUS>
+                    <TRANSPORT>SOME-IP-SD-UDP-MULTICAST</TRANSPORT>
+                    <REQUIRER-IREF>
+                        <PROCESS-DESIGN-REF>AdaptiveAutosarProcess</PROCESS-DESIGN-REF>
+                        <PORT-PROTOTYPE-IREF>
+                            AdaptiveAutosarRoot / WatchdogInstance / VehicleServiceRPort
+                        </PORT-PROTOTYPE-IREF>
+                    </REQUIRER-IREF>
+                    <PROVIDER-IREF>
+                        <PROCESS>AdaptiveAutosarProcess (remote machine)</PROCESS>
+                        <MANIFEST>extended_vehicle_manifest.arxml (remote machine)</MANIFEST>
+                        <ELEMENT>PROVIDED-SOMEIP-SERVICE-INSTANCE, Instance ID 1 or 0</ELEMENT>
+                    </PROVIDER-IREF>
+                </SW-CONNECTOR>
+
+                <!--
+                    Interaction 5b — SOME/IP Pub/Sub Subscription  [CROSS-MACHINE]
+                    ─────────────────────────────────────────────────────────────
+                    Consumer port instance: WatchdogInstance / VehicleServiceRPort
+
+                    Mechanism:
+                      After SD Offer received (5a), WatchdogApp sends
+                      SubscribeEventGroup(service 5, remote instance, EventGroup 1).
+                      Remote ExtendedVehicle's SomeIpPubSubServer replies with
+                      SubscribeEventGroupAck carrying multicast endpoint 239.0.0.1:5555.
+
+                    Subscription parameters (from watchdog_manifest.arxml):
+                      Service ID:       5
+                      Instance ID:      remote (1 or 0, same as 5a)
+                      EventGroup ID:    1
+
+                    C++ binding (planned):
+                      mPubSubClient (SomeIpPubSubClient) in WatchdogApplication::Main()
+                        Subscribe(5, remoteInstanceId, 1, 1)
+                        TryGetProcessedSubscription(timeout, ackMessage)
+                          → receives SubscribeEventGroupAck from remote mPubSubServer
+                -->
+                <SW-CONNECTOR>
+                    <SHORT-NAME>WatchdogSubscriptionConnector</SHORT-NAME>
+                    <KIND>EVENT-SUBSCRIPTION</KIND>
+                    <STATUS>PLANNED — subscription handshake wired on server side,
+                            client side not yet instantiated</STATUS>
+                    <TRANSPORT>SOME-IP-SD-UDP-MULTICAST</TRANSPORT>
+                    <REQUIRER-IREF>
+                        <PROCESS-DESIGN-REF>AdaptiveAutosarProcess</PROCESS-DESIGN-REF>
+                        <PORT-PROTOTYPE-IREF>
+                            AdaptiveAutosarRoot / WatchdogInstance / VehicleServiceRPort
+                        </PORT-PROTOTYPE-IREF>
+                        <EVENT-GROUP-ID>1</EVENT-GROUP-ID>
+                    </REQUIRER-IREF>
+                    <PROVIDER-IREF>
+                        <PROCESS>AdaptiveAutosarProcess (remote machine)</PROCESS>
+                        <ELEMENT>PROVIDED-EVENT-GROUPS / SOMEIP-PROVIDED-EVENT-GROUP
+                                 (extended_vehicle_manifest.arxml remote machine)</ELEMENT>
+                    </PROVIDER-IREF>
+                </SW-CONNECTOR>
+
+                <!--
+                    Interaction 5c — Heartbeat Event Receipt  [CROSS-MACHINE, PLANNED]
+                    ──────────────────────────────────────────────────────────────────
+                    Consumer port instance: WatchdogInstance / VehicleServiceRPort
+
+                    Mechanism (once Layer B of Interaction 1c is implemented):
+                      Remote ExtendedVehicle calls Publish(VehicleStatusType) every
+                      WaitForActivation cycle (10 ms). SOME/IP NOTIFICATION frame
+                      (MessageType=0x02, MethodID=0x8001) is sent to 239.0.0.1:5555.
+                      WatchdogApp listens on the multicast address, decodes the frame,
+                      and resets its timeout counter.
+
+                    Watchdog logic:
+                      If no event received within HEARTBEAT_TIMEOUT_CYCLES cycles
+                      (exact value TBD — proposed 100 cycles = 1000 ms):
+                        1. Log warning (ara::log):
+                           "Heartbeat timeout: no event from remote instance N"
+                        2. Optional: ara::diag report → DTC U0198 kPrefailed
+                           (would make DTC trigger event-receipt-based — see §4 note)
+
+                    Event payload (TelematicControlModuleEvent):
+                      Type:    VehicleStatusType
+                      Fields:  Vin17Type (VIN string, 17 chars)
+                               ConnectedToCloud (bool)
+                      SOME/IP serialization: to be defined (planned, not implemented)
+
+                    Implementation gap:
+                      Requires both:
+                        SomeIpPubSubServer::Publish(VehicleStatusType) [provider]
+                        SOME/IP event frame decoder / network layer [consumer]
+                      Neither exists yet. This is the primary remaining implementation
+                      task for end-to-end heartbeat functionality.
+
+                    C++ binding (planned):
+                      Heartbeat listener in WatchdogApplication::Main()
+                      Timeout counter reset on each valid event receipt
+                -->
+                <SW-CONNECTOR>
+                    <SHORT-NAME>WatchdogHeartbeatConnector</SHORT-NAME>
+                    <KIND>EVENT-NOTIFICATION</KIND>
+                    <STATUS>PLANNED — blocked on SomeIpPubSubServer::Publish() and
+                            SOME/IP event frame decoder</STATUS>
+                    <TRANSPORT>SOME-IP-PUBSUB-UDP-MULTICAST</TRANSPORT>
+                    <REQUIRER-IREF>
+                        <PROCESS-DESIGN-REF>AdaptiveAutosarProcess</PROCESS-DESIGN-REF>
+                        <PORT-PROTOTYPE-IREF>
+                            AdaptiveAutosarRoot / WatchdogInstance / VehicleServiceRPort
+                        </PORT-PROTOTYPE-IREF>
+                        <EVENT-REF>TelematicControlModuleEvent</EVENT-REF>
+                        <EVENT-GROUP-ID>1</EVENT-GROUP-ID>
+                    </REQUIRER-IREF>
+                    <PROVIDER-IREF>
+                        <PROCESS>AdaptiveAutosarProcess (remote machine)</PROCESS>
+                        <ELEMENT>ExtendedVehicleInstance / VehicleServicePPort /
+                                 TelematicControlModuleEvent</ELEMENT>
+                    </PROVIDER-IREF>
+                </SW-CONNECTOR>
+
+                <SW-TO-DIAGNOSTICS-INTERACTION>
+                    <SHORT-NAME>TelematicModuleDtcMapping</SHORT-NAME>
+                    <DTC-NUMBER>49560</DTC-NUMBER>
+                    <!-- DTC U0198 = 0xC198, ISO 15031-6 -->
+                    <TRIGGER>
+                        SD state of service 5 / VehicleServicePPort
+                        (planned: TelematicControlModuleEvent receipt timeout)
+                    </TRIGGER>
+                    <MONITOR-INSTANCE-SPECIFIER>TelematicControlModuleMonitor</MONITOR-INSTANCE-SPECIFIER>
+                    <EVENT-INSTANCE-SPECIFIER>TelematicControlModuleEvent</EVENT-INSTANCE-SPECIFIER>
+                    <PROCESS-DESIGN-REF>AdaptiveAutosarProcess</PROCESS-DESIGN-REF>
+                    <CONFIGURATION-REF>diagnostic_manager_manifest.arxml</CONFIGURATION-REF>
+                </SW-TO-DIAGNOSTICS-INTERACTION>
+
+            </ELEMENTS>
+        </AR-PACKAGE>
+    </AR-PACKAGES>
+</AUTOSAR>

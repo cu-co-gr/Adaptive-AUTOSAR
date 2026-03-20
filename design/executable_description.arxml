@@ -1,0 +1,281 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    §3.3.2.4  Executable Description
+    §3.3.2.6  SW Composition Description
+    §3.3.2.3  Process Design Description
+
+    Produced by task "Define Executable with enclosed SW Composition" (§3.3.1.1)
+    and "Define Process Design" (§3.3.1.5).
+
+    Inputs consumed:
+      - SW Component Design:        sw_component_design.arxml
+      - Service Interface Desc.:    extended_vehicle_service_interface.arxml
+      - Functional Cluster Desc.:   doc/autosar_specs/AUTOSAR_AP_SWS_*.pdf
+
+    Outputs consumed by:
+      - "Define Interaction with Applications"     (§3.3.1.2)
+      - "Define Interaction with Functional Clusters" (§3.3.1.3)
+      - "Define Execution Manifest"                (§3.10.1.2) → execution_manifest.arxml
+      - "Create or Finalize Service Instance Manifest" (§3.10.1.4)
+          → extended_vehicle_manifest.arxml
+          → watchdog_manifest.arxml
+
+    ─────────────────────────────────────────────────────────────────────────
+    COMPOSITION STRUCTURE (reverse-engineered from src/)
+
+    The project produces a single POSIX binary: adaptive_autosar
+    That binary hosts ONE process containing ALL processes as C++ objects.
+
+    C++ instantiation chain (src/main.cpp → src/application/platform/):
+
+      main()
+        ├── ExecutionManagement          [platform-level orchestrator]
+        │     └── StateManagement        [platform-level, SM exception — stays
+        │                                 inside EM, drives state transitions]
+        ├── PlatformHealthManagement     [platform-level, registered via Register()]
+        ├── ExtendedVehicle              [APPLICATION-LEVEL ← modelled in SW
+        │                                 Component Design, registered via Register()]
+        ├── DiagnosticManager            [platform-level, registered via Register()]
+        └── WatchdogApplication          [APPLICATION-LEVEL ← modelled in SW
+                                          Component Design, registered via Register()]
+                                          (PLANNED — not yet implemented)
+
+    ExecutionManagement::Main() starts each registered process in its own
+    std::thread via ModelledProcess::Initialize() → ModelledProcess::Main().
+
+    AUTOSAR methodology mapping:
+      In a full deployment each ModelledProcess would be a separate POSIX process
+      with its own Execution Manifest Process entry and startup configuration.
+      In this educational project they are all collapsed into one POSIX process
+      for simplicity. The Process Design Description below reflects the actual
+      single-process deployment.
+    ─────────────────────────────────────────────────────────────────────────
+-->
+<AUTOSAR
+    xmlns="http://autosar.org/schema/r4.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://autosar.org/schema/r4.0 autosar_00050.xsd">
+    <AR-PACKAGES>
+        <AR-PACKAGE>
+            <SHORT-NAME>ExecutableDesign</SHORT-NAME>
+            <ELEMENTS>
+
+                <!-- ═══════════════════════════════════════════════════════
+                     §3.3.2.6  SW COMPOSITION DESCRIPTION
+                     Extends the Executable Description.
+                     Describes the set of SW component instances enclosed
+                     in AdaptiveAutosarExecutable.
+                     ═══════════════════════════════════════════════════════ -->
+
+                <!--
+                    AdaptiveAutosarComposition
+                    ──────────────────────────
+                    Flat (non-hierarchical) composition containing the one
+                    application-level SW component prototype.
+
+                    Platform-level processes (EM, SM, PHM, DM) are co-hosted in
+                    the same binary but are NOT part of this SW composition — they
+                    are platform infrastructure, not application SWC instances.
+                    Their presence is documented in the "Platform context" note below.
+                -->
+                <COMPOSITION-SW-COMPONENT-TYPE>
+                    <SHORT-NAME>AdaptiveAutosarComposition</SHORT-NAME>
+
+                    <COMPONENTS>
+
+                        <!--
+                            ExtendedVehicleInstance
+                            ───────────────────────
+                            Application-level SW component prototype: vehicle
+                            telematic gateway and heartbeat publisher.
+
+                            Maps to: application::ExtendedVehicle (src/application/)
+                            Constructed in main(), registered via
+                            ExecutionManagement::Register().
+
+                            Port instances inherited from ExtendedVehicleSwc:
+                              ExtendedVehicleInstance/VehicleServicePPort
+                                → bound in extended_vehicle_manifest.arxml
+                                   (PROVIDED-SOMEIP-SERVICE-INSTANCE, service ID 5)
+                                   Instance ID 0 (Machine A) / 1 (Machine B)
+                              ExtendedVehicleInstance/HealthManagementRPort
+                                → bound in health_monitoring_manifest.arxml
+                                   (supervised entity "ExtendedVehicleSE")
+                        -->
+                        <SW-COMPONENT-PROTOTYPE>
+                            <SHORT-NAME>ExtendedVehicleInstance</SHORT-NAME>
+                            <TYPE-TREF DEST="ADAPTIVE-APPLICATION-SW-COMPONENT-TYPE">
+                                ExtendedVehicleSwc
+                            </TYPE-TREF>
+                        </SW-COMPONENT-PROTOTYPE>
+
+                        <!--
+                            WatchdogInstance
+                            ────────────────
+                            Application-level SW component prototype: cross-machine
+                            heartbeat monitor and watchdog. PLANNED — not yet
+                            implemented in C++.
+
+                            Maps to: application::WatchdogApplication (planned)
+                              src/application/watchdog_application.h / .cpp
+                            Constructed in main(), registered via
+                            ExecutionManagement::Register().
+
+                            Port instances inherited from WatchdogSwc:
+                              WatchdogInstance/VehicleServiceRPort
+                                → bound in watchdog_manifest.arxml
+                                   (REQUIRED-SOMEIP-SERVICE-INSTANCE, service ID 5)
+                                   Instance ID 1 (Machine A) / 0 (Machine B)
+                                   REQUIRED-EVENT-GROUPS: EventGroup ID 1
+
+                            Machine-specific binding:
+                              Machine A: watchdog subscribes to Instance 1 (Machine B EV)
+                              Machine B: watchdog subscribes to Instance 0 (Machine A EV)
+                              Same binary, different watchdog_manifest.arxml per machine.
+                        -->
+                        <SW-COMPONENT-PROTOTYPE>
+                            <SHORT-NAME>WatchdogInstance</SHORT-NAME>
+                            <TYPE-TREF DEST="ADAPTIVE-APPLICATION-SW-COMPONENT-TYPE">
+                                WatchdogSwc
+                            </TYPE-TREF>
+                        </SW-COMPONENT-PROTOTYPE>
+
+                    </COMPONENTS>
+
+                    <!--
+                        Platform context — processes co-hosted in the same binary.
+                        Not formal SWC instances (platform-level, no PPort/RPort
+                        in the application SW component model). Documented here
+                        for traceability to the C++ implementation.
+
+                          ExecutionManagement  — orchestrates all processes,
+                                                 owns the StateServer (RPC TCP),
+                                                 drives the DeterministicClient
+                                                 activation loop.
+                                                 C++: ExecutionManagement::Main()
+                                                 Manifest: execution_manifest.arxml
+
+                          StateManagement      — manages MachineFG function group
+                                                 state transitions (Off → StartUp).
+                                                 C++: StateManagement::Main()
+
+                          PlatformHealthManagement — monitors supervised entities,
+                                                 evaluates alive/deadline supervision
+                                                 against health_monitoring_manifest.arxml.
+                                                 C++: PlatformHealthManagement::Main()
+
+                          DiagnosticManager    — discovers service 5 via SOME/IP SD,
+                                                 routes OBD-II to DoIP, tracks DTC
+                                                 U0198 via ara::diag Monitor/Event.
+                                                 C++: DiagnosticManager::Main()
+                                                 Manifest: diagnostic_manager_manifest.arxml
+                    -->
+
+                </COMPOSITION-SW-COMPONENT-TYPE>
+
+                <!-- ═══════════════════════════════════════════════════════
+                     §3.3.2.4  EXECUTABLE DESCRIPTION
+                     ═══════════════════════════════════════════════════════ -->
+
+                <!--
+                    AdaptiveAutosarExecutable
+                    ─────────────────────────
+                    The single executable produced by the build.
+                    Binary name: adaptive_autosar
+                    Build target: CMakeLists.txt → add_executable(adaptive_autosar)
+
+                    Version: 1.0 (matches ServiceInterface major/minor version)
+
+                    reportingBehavior: REPORTS_EXECUTION_STATE
+                      ExecutionManagement calls ReportExecutionState() on behalf
+                      of all co-hosted processes via ModelledProcess lifecycle.
+
+                    Minimum timer granularity: 10 ms
+                      Set by DeterministicClient::cCycleDelayMs = 10 ms.
+                      All ModelledProcess WaitForActivation cycles run at this rate.
+                      (100 alive checkpoints/second → 10 per 100 ms PHM reference cycle)
+
+                    rootSwComponentPrototype: AdaptiveAutosarComposition
+                      Contains ExtendedVehicleInstance and WatchdogInstance as the
+                      two application-level SWC prototypes.
+                      Platform processes are co-hosted but not part of the composition.
+                -->
+                <EXECUTABLE>
+                    <SHORT-NAME>AdaptiveAutosarExecutable</SHORT-NAME>
+                    <MINIMUM-TIMER-GRANULARITY>0.01</MINIMUM-TIMER-GRANULARITY>
+                    <!-- 10 ms = 0.01 s — matches DeterministicClient::cCycleDelayMs -->
+
+                    <ROOT-SW-COMPONENT-PROTOTYPE>
+                        <SHORT-NAME>AdaptiveAutosarRoot</SHORT-NAME>
+                        <TYPE-TREF DEST="COMPOSITION-SW-COMPONENT-TYPE">
+                            AdaptiveAutosarComposition
+                        </TYPE-TREF>
+                    </ROOT-SW-COMPONENT-PROTOTYPE>
+
+                </EXECUTABLE>
+
+                <!-- ═══════════════════════════════════════════════════════
+                     §3.3.2.3  PROCESS DESIGN DESCRIPTION
+                     Design-time proxy for the POSIX process that runs
+                     AdaptiveAutosarExecutable on a Machine.
+                     Consumed by "Define Execution Manifest" (§3.10.1.2).
+                     ═══════════════════════════════════════════════════════ -->
+
+                <!--
+                    AdaptiveAutosarProcess
+                    ──────────────────────
+                    Single POSIX process per Machine instance.
+                    Two instances are deployed in the two-machine demo:
+                      Machine A: ./adaptive_autosar
+                                 configuration/machine_a/*.arxml (4 manifest files)
+                                 DoIP port 8081, RPC port 18080, SD instance 0
+                      Machine B: ./adaptive_autosar
+                                 configuration/machine_b/*.arxml (4 manifest files)
+                                 DoIP port 8082, RPC port 18081, SD instance 1
+
+                    The distinction between instances is driven entirely by the
+                    manifest files passed as command-line arguments — the same
+                    binary is used for both machines.
+
+                    Lifecycle (MachineFG function group):
+                      Off      → process not started
+                      StartUp  → process running, all ModelledProcess threads active
+
+                    Startup arguments (order defined in ArgumentConfiguration):
+                      Arg 1: --execution   <execution_manifest.arxml>
+                      Arg 2: --ev          <extended_vehicle_manifest.arxml>
+                      Arg 3: --diag        <diagnostic_manager_manifest.arxml>
+                      Arg 4: --health      <health_monitoring_manifest.arxml>
+                      Arg 5: --watchdog    <watchdog_manifest.arxml>  (PLANNED)
+
+                    Integration note:
+                      In a standard AUTOSAR AP deployment each ModelledProcess
+                      (EM, SM, PHM, EV, DM) would be a separate POSIX process with
+                      its own Process entry in the Execution Manifest and its own
+                      startup configuration. Here all five share one POSIX process.
+                      The Execution Manifest (execution_manifest.arxml) reflects
+                      the actual single-process deployment.
+                --> 
+                <PROCESS-DESIGN>
+                    <SHORT-NAME>AdaptiveAutosarProcess</SHORT-NAME>
+
+                    <EXECUTABLE-REF DEST="EXECUTABLE">
+                        AdaptiveAutosarExecutable
+                    </EXECUTABLE-REF>
+
+                    <!--
+                        Function group state that triggers this process.
+                        MachineFG::StartUp → process is started.
+                        Defined in execution_manifest.arxml FUNCTION-GROUPS section.
+                    -->
+                    <FUNCTION-GROUP-STATE-IREF>
+                        <FUNCTION-GROUP-REF>MachineFG</FUNCTION-GROUP-REF>
+                        <FUNCTION-GROUP-STATE-REF>StartUp</FUNCTION-GROUP-STATE-REF>
+                    </FUNCTION-GROUP-STATE-IREF>
+
+                </PROCESS-DESIGN>
+
+            </ELEMENTS>
+        </AR-PACKAGE>
+    </AR-PACKAGES>
+</AUTOSAR>

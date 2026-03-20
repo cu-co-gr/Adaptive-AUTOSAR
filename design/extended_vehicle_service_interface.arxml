@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    §3.8 Service Interface Design — Work Product §3.8.2.2
+    Service Interface Description for the Extended Vehicle Service
+
+    Methodology context:
+      This document is produced by task "Define Service Interface" (§3.3.1.4 /
+      §3.8.1.3) and consumed by:
+        - "Define SW Component Design" (§3.3.1.4): ExtendedVehicle gets a PPort,
+          DiagnosticManager gets an RPort, both referencing this interface.
+        - "Define provided and required service instances" (§3.9.1.1): binds this
+          abstract interface to SOME/IP transport with service ID 0x0005.
+        - Code generation (§3.4.2.4): in a full toolchain, proxy/skeleton headers
+          would be generated from this file. In this project the SOME/IP stack is
+          hand-coded in ara/com/someip/ so no generation step is performed.
+
+    Relationship to existing manifests:
+      extended_vehicle_manifest.arxml    — Service Instance Manifest (§3.10.2.6)
+                                           binding the PPort to SOME/IP transport
+      diagnostic_manager_manifest.arxml — Service Instance Manifest (§3.10.2.6)
+                                           binding the RPort to SOME/IP transport
+
+    Implementation gap (reverse-engineered from source):
+      The current code uses service ID 5 purely for DoIP endpoint advertisement
+      via SOME/IP SD. ExtendedVehicle instantiates SomeIpSdServer but NOT
+      SomeIpPubSubServer; DiagnosticManager instantiates SomeIpSdClient but NOT
+      SomeIpPubSubClient. No SOME/IP event notifications are sent at runtime.
+
+      The DIAGNOSTIC-EVENT-INTERFACE named "TelematicControlModuleEvent" in
+      diagnostic_manager_manifest.arxml is an ara::diag DTC artifact (DTC U0198,
+      "Lost Communication With Telematic Control Module"). It reacts to SOME/IP SD
+      discovery state — service seen → kPrepassed, service not seen → kPrefailed.
+      It is NOT a subscription to SOME/IP events from this service interface.
+
+      Filling this gap (instantiating SomeIpPubSubServer/Client and publishing the
+      event below) is the next planned implementation step.
+-->
+<AUTOSAR
+    xmlns="http://autosar.org/schema/r4.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://autosar.org/schema/r4.0 autosar_00050.xsd">
+    <AR-PACKAGES>
+        <AR-PACKAGE>
+            <SHORT-NAME>ExtendedVehicleServiceDesign</SHORT-NAME>
+            <ELEMENTS>
+
+                <!-- ═══════════════════════════════════════════════════════
+                     §3.8.2.1  Datatypes for the Adaptive Platform
+                     ═══════════════════════════════════════════════════════ -->
+
+                <!--
+                    17-character Vehicle Identification Number per ISO 3779.
+                    In demo mode the value is fixed to "DEMO0000000000001".
+                    In production mode it is fetched from the Volvo Connected API.
+                -->
+                <IMPLEMENTATION-DATA-TYPE>
+                    <SHORT-NAME>Vin17Type</SHORT-NAME>
+                    <CATEGORY>STRING</CATEGORY>
+                    <!-- max length: 17 characters, charset: A-H J-N P-Z 0-9 -->
+                </IMPLEMENTATION-DATA-TYPE>
+
+                <!--
+                    Compound status payload published by ExtendedVehicle on the
+                    TelematicControlModuleEvent.
+                -->
+                <IMPLEMENTATION-DATA-TYPE>
+                    <SHORT-NAME>VehicleStatusType</SHORT-NAME>
+                    <CATEGORY>STRUCTURE</CATEGORY>
+                    <SUB-ELEMENTS>
+                        <!--
+                            Vehicle Identification Number.
+                            Provides the DoIP routing target identity so that
+                            DiagnosticManager can verify it is talking to the
+                            correct vehicle node.
+                        -->
+                        <IMPLEMENTATION-DATA-TYPE-ELEMENT>
+                            <SHORT-NAME>Vin</SHORT-NAME>
+                            <CATEGORY>TYPE_REFERENCE</CATEGORY>
+                            <TYPE-TREF DEST="IMPLEMENTATION-DATA-TYPE">Vin17Type</TYPE-TREF>
+                        </IMPLEMENTATION-DATA-TYPE-ELEMENT>
+                        <!--
+                            True when the Volvo Connected API is reachable and the
+                            VIN was fetched from the cloud. False in demo mode or
+                            when the API is unavailable.
+                            DiagnosticManager may use this to gate OBD-II bridging.
+                        -->
+                        <IMPLEMENTATION-DATA-TYPE-ELEMENT>
+                            <SHORT-NAME>ConnectedToCloud</SHORT-NAME>
+                            <CATEGORY>VALUE</CATEGORY>
+                            <!-- base type: boolean -->
+                        </IMPLEMENTATION-DATA-TYPE-ELEMENT>
+                    </SUB-ELEMENTS>
+                </IMPLEMENTATION-DATA-TYPE>
+
+                <!-- ═══════════════════════════════════════════════════════
+                     §3.8.2.2  Service Interface Description
+                     ═══════════════════════════════════════════════════════ -->
+
+                <!--
+                    ExtendedVehicleInterface is the service interface for the
+                    Extended Vehicle Adaptive Application.
+
+                    Purpose:
+                      Acts as a telematic gateway. It:
+                        1. Advertises a DoIP server endpoint via SOME/IP SD so
+                           DiagnosticManager can route UDS diagnostic requests
+                           (ISO 13400-2 / ISO 14229-1) to the vehicle.
+                        2. Publishes vehicle status (VIN, cloud connectivity) to
+                           subscribers via the TelematicControlModuleEvent.
+
+                    Provider:  ExtendedVehicle  (PPort — skeleton side)
+                    Requirer:  DiagnosticManager (RPort — proxy side)
+
+                    No SOME/IP methods are defined: the service is event-only.
+                    DoIP request/response traffic runs on a separate TCP connection
+                    whose endpoint is carried in the SOME/IP SD Offer message
+                    (ServerUnicastTcp port, read from extended_vehicle_manifest.arxml).
+                -->
+                <SERVICE-INTERFACE>
+                    <SHORT-NAME>ExtendedVehicleInterface</SHORT-NAME>
+
+                    <EVENTS>
+                        <!--
+                            TelematicControlModuleEvent
+                            ───────────────────────────
+                            Published by ExtendedVehicle after startup once the VIN
+                            is available and whenever connectivity status changes.
+
+                            Subscriber behaviour (DiagnosticManager):
+                              - On receipt: update OBD-II bridge, report
+                                MonitorAction::kPrepassed to the DTC monitor.
+                              - On timeout (6000 ms without a new event): report
+                                MonitorAction::kPrefailed, which eventually sets
+                                DTC U0198 ("Lost Communication With Telematic
+                                Control Module", ISO 15031-6 / ISO 15031-7).
+
+                            Note: the DIAGNOSTIC-EVENT-INTERFACE element of the
+                            same name in diagnostic_manager_manifest.arxml is the
+                            ara::diag binding for DTC U0198. It is distinct from
+                            this SOME/IP event but semantically coupled: the DTC
+                            fires when this SOME/IP event stops arriving.
+
+                            Implementation status: NOT YET WIRED.
+                              ExtendedVehicle must instantiate SomeIpPubSubServer
+                              and call Notify() here; DiagnosticManager must
+                              instantiate SomeIpPubSubClient and call Subscribe().
+                        -->
+                        <VARIABLE-DATA-PROTOTYPE>
+                            <SHORT-NAME>TelematicControlModuleEvent</SHORT-NAME>
+                            <TYPE-TREF DEST="IMPLEMENTATION-DATA-TYPE">
+                                VehicleStatusType
+                            </TYPE-TREF>
+                        </VARIABLE-DATA-PROTOTYPE>
+                    </EVENTS>
+
+                    <!-- No methods: all data exchange is event-driven or via DoIP -->
+
+                </SERVICE-INTERFACE>
+
+                <!-- ═══════════════════════════════════════════════════════
+                     §3.9.2.4  Service Deployment Description
+                               (SOME/IP transport binding)
+                     ═══════════════════════════════════════════════════════ -->
+
+                <!--
+                    Maps ExtendedVehicleInterface to SOME/IP wire format.
+
+                    This information is consumed by:
+                      - extended_vehicle_manifest.arxml  (PROVIDED-SOMEIP-SERVICE-INSTANCE)
+                      - diagnostic_manager_manifest.arxml (REQUIRED-SOMEIP-SERVICE-INSTANCE)
+                    Both manifests reference SERVICE-INTERFACE-ID 5 which corresponds
+                    to this deployment definition.
+                -->
+                <SOMEIP-SERVICE-INTERFACE-DEPLOYMENT>
+                    <SHORT-NAME>ExtendedVehicleInterfaceDeployment</SHORT-NAME>
+
+                    <SERVICE-INTERFACE-REF DEST="SERVICE-INTERFACE">
+                        ExtendedVehicleInterface
+                    </SERVICE-INTERFACE-REF>
+
+                    <!-- Wire ID used in SOME/IP SD Find/Offer messages -->
+                    <SERVICE-INTERFACE-ID>5</SERVICE-INTERFACE-ID>
+
+                    <SERVICE-INTERFACE-VERSION>
+                        <!-- Must match MAJOR/MINOR-VERSION in both instance manifests -->
+                        <MAJOR-VERSION>1</MAJOR-VERSION>
+                        <MINOR-VERSION>0</MINOR-VERSION>
+                    </SERVICE-INTERFACE-VERSION>
+
+                    <EVENT-DEPLOYMENTS>
+                        <SOMEIP-EVENT-DEPLOYMENT>
+                            <SHORT-NAME>TelematicControlModuleEventDeployment</SHORT-NAME>
+                            <EVENT-REF DEST="VARIABLE-DATA-PROTOTYPE">
+                                TelematicControlModuleEvent
+                            </EVENT-REF>
+                            <!--
+                                SOME/IP event ID within the service (method ID field
+                                range 0x8001–0xFFFE for notifications per SOME/IP spec).
+                            -->
+                            <EVENT-ID>32769</EVENT-ID>
+                            <!-- 0x8001 — first valid event notification method ID -->
+                        </SOMEIP-EVENT-DEPLOYMENT>
+                    </EVENT-DEPLOYMENTS>
+
+                    <EVENT-GROUP-DEPLOYMENTS>
+                        <!--
+                            VehicleEventsGroup
+                            ──────────────────
+                            Subscribers send SubscribeEventGroup for this group ID
+                            on the SD multicast channel (239.0.0.1:5555) after
+                            discovering service 5 via SD Find/Offer.
+
+                            The event group ID must be added to:
+                              PROVIDED-EVENT-GROUPS in extended_vehicle_manifest.arxml
+                              REQUIRED-EVENT-GROUPS in diagnostic_manager_manifest.arxml
+                            (currently absent — this is the manifest change needed
+                             when wiring up SomeIpPubSubServer/Client).
+                        -->
+                        <SOMEIP-EVENT-GROUP>
+                            <SHORT-NAME>VehicleEventsGroup</SHORT-NAME>
+                            <EVENT-GROUP-ID>1</EVENT-GROUP-ID>
+                            <EVENT-REFS>
+                                <EVENT-REF DEST="VARIABLE-DATA-PROTOTYPE">
+                                    TelematicControlModuleEvent
+                                </EVENT-REF>
+                            </EVENT-REFS>
+                        </SOMEIP-EVENT-GROUP>
+                    </EVENT-GROUP-DEPLOYMENTS>
+
+                </SOMEIP-SERVICE-INTERFACE-DEPLOYMENT>
+
+            </ELEMENTS>
+        </AR-PACKAGE>
+    </AR-PACKAGES>
+</AUTOSAR>

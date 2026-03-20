@@ -1,0 +1,381 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    §3.3.2.5  SW Component Design
+    SW Component Design for the Extended Vehicle Adaptive Application
+
+    Part of the Application Design Description (§3.3.2).
+    The full Application Design Description consists of:
+      - This file                          (SW Component Design)
+      - executable_description.arxml       (Executable + SW Composition + Process Design)
+      - sw_interaction_description.arxml   (SW Interaction Description)
+
+    Methodology context:
+      Produced by task "Define SW Component Design" (§3.3.1.4).
+      Inputs consumed:
+        - Service Interface Description:         extended_vehicle_service_interface.arxml
+        - Functional Cluster Interface Desc.:    see FC INTERFACE REFERENCES section below
+      Outputs consumed by:
+        - "Define Executable with enclosed SW Composition" (§3.3.1.1)
+          → executable_description.arxml
+        - "Define Interaction with Applications" (§3.3.1.2)
+          → sw_interaction_description.arxml (VehicleServicePPort connectors)
+        - "Define Interaction with Functional Clusters" (§3.3.1.3)
+          → sw_interaction_description.arxml (PHM, ara::log, ara::exec, ara::diag)
+
+    ─────────────────────────────────────────────────────────────────────────
+    SCOPE — APPLICATION-LEVEL COMPONENTS ONLY (§TR_AMETH_00010)
+
+    This document covers only APPLICATION-LEVEL adaptive SW components developed
+    by the application team against ARA interfaces.
+
+    PLATFORM-LEVEL Functional Clusters (§TR_AMETH_00035) —
+    ExecutionManagement, StateManagement, PlatformHealthManagement,
+    DiagnosticManager — are NOT modelled here. They are pseudo-implementations
+    of the AUTOSAR AP platform FCs that in a production system would be provided
+    by the platform vendor as separate deliverables. In this project they are
+    hand-coded under src/application/platform/ for educational purposes.
+
+    Composition root is main() in src/main.cpp: all processes are instantiated
+    there and registered with ExecutionManagement via Register(). The application
+    SW component (ExtendedVehicle) is constructed in main() exactly like the
+    platform processes — there is no separate process per POSIX standard, but
+    the methodology structure is preserved at the class/lifecycle level.
+
+    Component modelled:
+      ExtendedVehicleSwc — the single application-level adaptive SW component.
+    ─────────────────────────────────────────────────────────────────────────
+
+    DISTINCTION BETWEEN PORT-BASED AND API-BASED FC INTERACTION (§3.3.2.5)
+      (a) Port-based: component has an explicit PPort or RPort below.
+          These appear in the SW composition at integration time.
+      (b) API-based: component calls the FC C++ API directly.
+          No port is modelled; interaction documented in
+          SW Interaction Description (§3.3.2.7).
+-->
+<AUTOSAR
+    xmlns="http://autosar.org/schema/r4.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://autosar.org/schema/r4.0 autosar_00050.xsd">
+    <AR-PACKAGES>
+        <AR-PACKAGE>
+            <SHORT-NAME>SwComponentDesign</SHORT-NAME>
+            <ELEMENTS>
+
+                <!-- ═══════════════════════════════════════════════════════
+                     FUNCTIONAL CLUSTER INTERFACE REFERENCES
+                     Each stub documents which specific FC API elements
+                     ExtendedVehicle actually uses (§3.3.1.3).
+                     ═══════════════════════════════════════════════════════ -->
+
+                <!--
+                    PlatformHealthManagementInterface
+                    Source: AUTOSAR_AP_SWS_PlatformHealthManagement
+                    Interaction mode: PORT-BASED (RPort on the component side).
+                    Stub required so that HealthManagementRPort TREF resolves.
+
+                    FC API elements used by ExtendedVehicle:
+                      ara::phm::SupervisedEntity
+                        Constructor:
+                          SupervisedEntity(
+                            ara::core::InstanceSpecifier{"ExtendedVehicleSE"},
+                            ara::phm::CheckpointCommunicator*)
+                        Operations (3 calls per WaitForActivation cycle):
+                          ReportCheckpoint(AliveCheckpoint = 0)
+                            ↳ before WaitForActivation — alive supervision
+                          ReportCheckpoint(DeadlineSourceCheckpoint = 1)
+                            ↳ before WaitForActivation — deadline source
+                          ReportCheckpoint(DeadlineTargetCheckpoint = 2)
+                            ↳ after WaitForActivation  — deadline target
+                      ara::core::InstanceSpecifier
+                        Used to identify the supervised entity by name.
+                        Value: "ExtendedVehicleSE"
+                        Bound in health_monitoring_manifest.arxml.
+                      Transport: FifoCheckpointCommunicator
+                        Named pipe: /tmp/fifo_<rpcPort>
+                        Constructed in main(); passed to both ExtendedVehicle
+                        and PlatformHealthManagement at construction time.
+                -->
+                <PORT-INTERFACE>
+                    <SHORT-NAME>PlatformHealthManagementInterface</SHORT-NAME>
+                </PORT-INTERFACE>
+
+                <!--
+                    ara::log — LogAndTrace FC — API-BASED, no port modelled.
+                    Source: AUTOSAR_AP_SWS_LogAndTrace
+
+                    FC API elements used by ExtendedVehicle:
+                      ara::log::LogStream
+                        operator<<(string/int/uint) — appends to internal buffer
+                        Flush()                     — clears buffer without output
+                      ara::exec::helper::ModelledProcess::Log(LogLevel, LogStream&)
+                        Wrapper that routes to the ARA logging framework.
+                        Log levels used:
+                          cLogLevel   = kInfo  — normal operational messages
+                          cErrorLevel = kError — runtime_error catch blocks
+                      Logger contexts (set in ModelledProcess base class):
+                        appId  = "ExtendedVehicle"
+                        ctxId  = "Lifetime" / description "Application lifetime logs"
+                -->
+
+                <!--
+                    ara::exec — ExecutionManagement FC — API-BASED, no port modelled.
+                    Source: AUTOSAR_AP_SWS_ExecutionManagement
+
+                    FC API elements used by ExtendedVehicle:
+                      ara::exec::helper::ModelledProcess  (base class)
+                        Initialize(map<string,string> args) — starts Main() thread
+                        Terminate()                         — sets cancellation token,
+                                                             joins thread
+                        WaitForActivation() → bool          — blocks until next
+                                                             DeterministicClient cycle;
+                                                             returns false on shutdown
+                      ara::exec::DeterministicClient
+                        cCycleDelayMs = 10                  — activation period (ms);
+                                                             drives the main loop rate
+                      ara::core::InstanceSpecifier
+                        Used here for the PHM supervised entity identity (see above).
+                -->
+
+                <!--
+                    ara::diag — DiagnosticManagement FC — API-BASED, no port modelled.
+                    Source: AUTOSAR_AP_SWS_DiagnosticManagement
+
+                    FC API elements used by ExtendedVehicle:
+                      ara::diag::Conversation
+                        GetCurrentActiveConversations() → vector<Conversation>
+                          Called once at termination (shutdown guard).
+                          If size == 0: logs "no active diagnostic conversation".
+                          If size  > 0: logs "active conversations at termination".
+                          Not a sustained interaction — single query, no port.
+                -->
+
+                <!-- ═══════════════════════════════════════════════════════
+                     APPLICATION-LEVEL SW COMPONENT — ExtendedVehicleSwc
+                     ═══════════════════════════════════════════════════════ -->
+
+                <!--
+                    ExtendedVehicleSwc
+                    ──────────────────
+                    Category: application-level adaptive SW component (§TR_AMETH_00010).
+
+                    Responsibility:
+                      Vehicle telematic gateway. Acquires VIN (Volvo Connected API or
+                      demo mode), operates a DoIP server for UDS diagnostic routing,
+                      advertises service 5 via SOME/IP SD, handles event-group
+                      subscription (SOME/IP pub/sub handshake), and reports alive and
+                      deadline checkpoints to PHM every activation cycle.
+
+                    C++ realisation:
+                      Class:      application::ExtendedVehicle
+                      Files:      src/application/extended_vehicle.h / .cpp
+                      Base class: ara::exec::helper::ModelledProcess
+                        Provides WaitForActivation(), Initialize(), Terminate(),
+                        Log() — all API-based, no ports.
+                      Constructed and registered in: src/main.cpp
+
+                    Ports (2):
+
+                      VehicleServicePPort  — application-level PPort
+                        Provides ExtendedVehicleInterface (service 5) to
+                        other applications / platform components on the network.
+
+                        C++ realisation (three parallel mechanisms on one port):
+
+                          mNetworkLayer   — SdNetworkLayer (UDP multicast socket)
+                            Shared transport for SD and pub/sub SD messages.
+                            Binds to 239.0.0.1:5555 (from manifest EVENT-MULTICAST-UDP-PORT
+                            and IPV-4-MULTICAST-IP-ADDRESS).
+
+                          mSdServer       — SomeIpSdServer (IMPLEMENTED)
+                            Sends OfferService SD messages periodically.
+                            Endpoint advertised: 127.0.0.1:8081 (Machine A)
+                                              or 127.0.0.1:8082 (Machine B)
+                            Configured via: configureSdServer(reader)
+
+                          mPubSubServer   — SomeIpPubSubServer (IMPLEMENTED)
+                            Handles SubscribeEventGroup SD messages from clients.
+                            Replies with SubscribeEventGroupAck carrying the
+                            multicast endpoint 239.0.0.1:5555.
+                            EventGroup ID: 1 (from manifest EVENT-GROUP-ID).
+                            Configured via: configurePubSubServer(reader)
+                            Note: subscription handshake is complete; multicast
+                            event payload delivery (VehicleStatus data) is a
+                            planned future step requiring a Publish() API.
+
+                          mDoipServer     — DoipServer (IMPLEMENTED)
+                            Accepts UDS-over-DoIP connections on the TCP unicast
+                            endpoint (ServerUnicastTcp, port 8081/8082).
+                            Serves VIN and vehicle resource queries.
+
+                        Integration binding: extended_vehicle_manifest.arxml
+                          PROVIDED-SOMEIP-SERVICE-INSTANCE, service ID 5
+                          SERVICE-INSTANCE-ID: 0 (Machine A) / 1 (Machine B)
+                          EventGroup multicast: 239.0.0.1:5555 (EventGroup ID 1)
+                          DoIP TCP endpoint: 127.0.0.1:8081 / 8082
+
+                      HealthManagementRPort — platform-level RPort
+                        Requires PlatformHealthManagementInterface.
+                        See FC Interface Reference above for full API detail.
+                        Integration binding: health_monitoring_manifest.arxml
+                          SupervisedEntity: "ExtendedVehicleSE"
+                          EXPECTED-ALIVE-INDICATIONS: 10 per 100 ms reference cycle
+                          MIN-MARGIN / MAX-MARGIN: ±5
+
+                    API-based FC interactions (no port modelled):
+                      ara::log  — LogStream, Log(level, stream) via base class
+                      ara::exec — WaitForActivation, Initialize/Terminate, cCycleDelayMs
+                      ara::diag — Conversation::GetCurrentActiveConversations() at shutdown
+                -->
+                <ADAPTIVE-APPLICATION-SW-COMPONENT-TYPE>
+                    <SHORT-NAME>ExtendedVehicleSwc</SHORT-NAME>
+
+                    <PORTS>
+
+                        <P-PORT-PROTOTYPE>
+                            <SHORT-NAME>VehicleServicePPort</SHORT-NAME>
+                            <PROVIDED-INTERFACE-TREF DEST="SERVICE-INTERFACE">
+                                ExtendedVehicleInterface
+                            </PROVIDED-INTERFACE-TREF>
+                        </P-PORT-PROTOTYPE>
+
+                        <R-PORT-PROTOTYPE>
+                            <SHORT-NAME>HealthManagementRPort</SHORT-NAME>
+                            <REQUIRED-INTERFACE-TREF DEST="PORT-INTERFACE">
+                                PlatformHealthManagementInterface
+                            </REQUIRED-INTERFACE-TREF>
+                        </R-PORT-PROTOTYPE>
+
+                    </PORTS>
+
+                </ADAPTIVE-APPLICATION-SW-COMPONENT-TYPE>
+
+                <!-- ═══════════════════════════════════════════════════════
+                     APPLICATION-LEVEL SW COMPONENT — WatchdogSwc
+                     ═══════════════════════════════════════════════════════ -->
+
+                <!--
+                    WatchdogSwc
+                    ───────────
+                    Category: application-level adaptive SW component (§TR_AMETH_00010).
+
+                    Responsibility:
+                      Cross-machine heartbeat monitor. Subscribes to the
+                      TelematicControlModuleEvent published by the ExtendedVehicle
+                      on the REMOTE machine (Instance ID 1 on Machine A, Instance ID 0
+                      on Machine B). If no event is received within a configurable
+                      timeout window (heartbeat interval × tolerance factor), it logs
+                      a connectivity warning. Optionally reports via ara::diag to
+                      make the DTC U0198 trigger event-receipt-based rather than
+                      SD-state-based (see sw_interaction_description.arxml §4 note).
+
+                    C++ realisation (planned — not yet implemented):
+                      Class:      application::WatchdogApplication
+                      Files:      src/application/watchdog_application.h / .cpp
+                      Base class: ara::exec::helper::ModelledProcess
+                        Provides WaitForActivation(), Initialize(), Terminate(), Log()
+                      Constructed and registered in: src/main.cpp
+
+                    Service interface consumed:
+                      ExtendedVehicleInterface (service ID 5)
+                      Same interface defined in extended_vehicle_service_interface.arxml.
+                      No new service interface description is required.
+                      TelematicControlModuleEvent (EventGroup ID 1) doubles as
+                      the heartbeat signal — its periodic receipt confirms Machine B
+                      (or A) is alive and connected.
+
+                    Ports (1):
+
+                      VehicleServiceRPort — application-level RPort
+                        Requires ExtendedVehicleInterface (service 5) from the
+                        REMOTE machine only.
+                          Machine A WatchdogApp: subscribes to Instance ID 1 (Machine B)
+                          Machine B WatchdogApp: subscribes to Instance ID 0 (Machine A)
+                        This fixes the Instance ID ANY gap documented in
+                        sw_interaction_description.arxml §1a: WatchdogApp always
+                        targets the remote instance explicitly, so it will not
+                        accidentally discover its own machine's service.
+
+                        C++ realisation (planned):
+                          mSdClient       — SomeIpSdClient
+                            Sends FindService for service 5 / remote instance.
+                            Receives OfferService Ack from remote ExtendedVehicle.
+                          mPubSubClient   — SomeIpPubSubClient
+                            Sends SubscribeEventGroup (service 5, EventGroup 1).
+                            Receives SubscribeEventGroupAck via
+                            TryGetProcessedSubscription().
+                          Heartbeat receiver — SOMEIP event data listener (PLANNED)
+                            Listens on 239.0.0.1:5555 for SOME/IP NOTIFICATION
+                            frames (MessageType=0x02, MethodID=0x8001).
+                            Not yet implemented — requires SomeIpPubSubServer::Publish()
+                            on the provider side and a SOME/IP event frame decoder
+                            on this side. See implementation gap note below.
+
+                        Integration binding: watchdog_manifest.arxml
+                          REQUIRED-SOMEIP-SERVICE-INSTANCE, service ID 5
+                          SERVICE-INSTANCE-ID: 1 (Machine A manifest)
+                                            or 0 (Machine B manifest)
+                          REQUIRED-EVENT-GROUPS: EventGroup ID 1
+
+                    API-based FC interactions (no port modelled):
+                      ara::log  — LogStream, Log(level, stream) via base class
+                      ara::exec — WaitForActivation, Initialize/Terminate, cCycleDelayMs
+
+                    Implementation gap note:
+                      The subscription handshake (FindService → Subscribe → Ack)
+                      is fully supported by SomeIpSdClient + SomeIpPubSubClient.
+                      Actual heartbeat data delivery requires two additions:
+                        Provider side: SomeIpPubSubServer::Publish(VehicleStatusType)
+                          — sends a SOME/IP NOTIFICATION frame to 239.0.0.1:5555
+                          — method ID 0x8001, service ID 5
+                          — currently no Publish() API exists on SomeIpPubSubServer
+                        Consumer side: SOME/IP event frame receiver
+                          — must decode non-SD SOME/IP frames from 239.0.0.1:5555
+                          — separate from SdNetworkLayer (which handles SD messages)
+                          — timeout detection against WaitForActivation cycle count
+                      These are the two implementation tasks gating the first
+                      end-to-end heartbeat.
+                -->
+                <ADAPTIVE-APPLICATION-SW-COMPONENT-TYPE>
+                    <SHORT-NAME>WatchdogSwc</SHORT-NAME>
+
+                    <PORTS>
+
+                        <R-PORT-PROTOTYPE>
+                            <SHORT-NAME>VehicleServiceRPort</SHORT-NAME>
+                            <REQUIRED-INTERFACE-TREF DEST="SERVICE-INTERFACE">
+                                ExtendedVehicleInterface
+                            </REQUIRED-INTERFACE-TREF>
+                        </R-PORT-PROTOTYPE>
+
+                    </PORTS>
+
+                </ADAPTIVE-APPLICATION-SW-COMPONENT-TYPE>
+
+                <!-- ═══════════════════════════════════════════════════════
+                     NEXT STEPS IN THE METHODOLOGY FLOW
+                     ═══════════════════════════════════════════════════════
+
+                     §3.3.1.1  Define Executable with enclosed SW Composition
+                       → executable_description.arxml
+                       ExtendedVehicleSwc is instantiated as a single prototype
+                       (ExtendedVehicleInstance) inside AdaptiveAutosarComposition.
+                       Platform-level processes (EM, SM, PHM, DM) are co-hosted in
+                       the same POSIX binary but are not part of the SW composition.
+
+                     §3.3.1.2  Define Interaction with Applications
+                       VehicleServicePPort ↔ DiagnosticManager (platform-level consumer):
+                         SD: OfferService / FindService over 239.0.0.1:5555
+                         PubSub: SubscribeEventGroup / Ack over 239.0.0.1:5555
+                         DoIP: UDS queries over TCP 127.0.0.1:8081 / 8082
+                       Cross-machine binding in Service Instance Manifests.
+
+                     §3.3.1.3  Define Interaction with Functional Clusters
+                       HealthManagementRPort → health_monitoring_manifest.arxml
+                       API-based interactions → sw_interaction_description.arxml
+
+                     ═══════════════════════════════════════════════════════ -->
+
+            </ELEMENTS>
+        </AR-PACKAGE>
+    </AR-PACKAGES>
+</AUTOSAR>
