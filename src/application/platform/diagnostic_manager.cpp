@@ -15,6 +15,7 @@ namespace application
         DiagnosticManager::DiagnosticManager(AsyncBsdSocketLib::Poller *poller) : ara::exec::helper::ModelledProcess(cAppId, poller),
                                                                                   mNetworkLayer{nullptr},
                                                                                   mSdClient{nullptr},
+                                                                                  mLastSdState{ara::com::helper::SdClientState::ServiceNotSeen},
                                                                                   mEvent{nullptr},
                                                                                   mMonitor{nullptr},
                                                                                   mSerialCommunication(cSerialPort, cBaudrate),
@@ -136,7 +137,15 @@ namespace application
                 _successful = mObdEmulator->TryStartAsync();
                 if (!_successful)
                 {
-                    throw std::runtime_error("Starting OBD-II emulator failed.");
+                    ara::log::LogStream _warnStream;
+                    _warnStream << "Starting OBD-II emulator failed (no CAN hardware). "
+                                << "Running without OBD-II bridge.";
+                    Log(cLogLevel, _warnStream);
+
+                    delete mObdEmulator;
+                    mObdEmulator = nullptr;
+                    delete mObdToDoipConverter;
+                    mObdToDoipConverter = nullptr;
                 }
             }
             else if (cDebouncingStatus ==
@@ -261,6 +270,29 @@ namespace application
             const ara::com::helper::SdClientState cState{
                 mSdClient->GetState()};
 
+            if (cState != mLastSdState)
+            {
+                if (cState == ara::com::helper::SdClientState::ServiceReady ||
+                    cState == ara::com::helper::SdClientState::ServiceSeen)
+                {
+                    std::string _ip;
+                    uint16_t _port{0};
+                    mSdClient->TryGetOfferedEndpoint(_ip, _port);
+
+                    ara::log::LogStream _logStream;
+                    _logStream << "[SD-Client] Service 5 discovered"
+                               << " at " << _ip << ":" << static_cast<uint32_t>(_port);
+                    Log(cLogLevel, _logStream);
+                }
+                else if (cState == ara::com::helper::SdClientState::ServiceNotSeen)
+                {
+                    ara::log::LogStream _logStream;
+                    _logStream << "[SD-Client] Service 5 lost (not seen)";
+                    Log(cLogLevel, _logStream);
+                }
+                mLastSdState = cState;
+            }
+
             if (cState == ara::com::helper::SdClientState::ServiceReady ||
                 cState == ara::com::helper::SdClientState::ServiceSeen)
             {
@@ -296,12 +328,43 @@ namespace application
                 Log(cLogLevel, _logStream);
 
                 bool _running{true};
+                uint32_t _heartbeatCounter{0};
                 mSdClient->Start();
 
                 while (!cancellationToken->load() && _running)
                 {
                     _running = WaitForActivation();
                     checkServiceDiscovery();
+
+                    ++_heartbeatCounter;
+                    if (_heartbeatCounter % 500 == 0)
+                    {
+                        const ara::com::helper::SdClientState cHbState{
+                            mSdClient->GetState()};
+                        ara::log::LogStream _hbStream;
+                        _hbStream << "[Heartbeat] DiagnosticManager alive"
+                                  << " | SD state: ";
+                        if (cHbState ==
+                            ara::com::helper::SdClientState::ServiceReady)
+                        {
+                            std::string _ip;
+                            uint16_t _port{0};
+                            mSdClient->TryGetOfferedEndpoint(_ip, _port);
+                            _hbStream << "ServiceReady"
+                                      << " endpoint " << _ip << ":"
+                                      << static_cast<uint32_t>(_port);
+                        }
+                        else if (cHbState ==
+                            ara::com::helper::SdClientState::ServiceSeen)
+                        {
+                            _hbStream << "ServiceSeen";
+                        }
+                        else
+                        {
+                            _hbStream << "ServiceNotSeen";
+                        }
+                        Log(cLogLevel, _hbStream);
+                    }
                 }
 
                 delete mSdClient;

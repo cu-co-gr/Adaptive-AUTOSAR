@@ -62,6 +62,10 @@ namespace application
             /// @return True if the bearer token is set correctly; otherwise false
             bool TryAskingBearToken(
                 std::string message = "Please enter the OAuth 2.0 bearer token:");
+
+            /// @brief Set demo mode by injecting empty API credentials
+            /// so the application can run without the Volvo VCC API
+            void SetDemoMode();
         };
     }
 }

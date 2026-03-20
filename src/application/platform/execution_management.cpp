@@ -8,16 +8,19 @@ namespace application
     namespace platform
     {
         const std::string ExecutionManagement::cAppId{"ExecutionManagement"};
-        const std::string ExecutionManagement::cFifoPath{"/tmp/fifo_communicator"};
+        const std::string ExecutionManagement::cMachineFunctionGroup{"MachineFG"};
 
-        ExecutionManagement::ExecutionManagement(AsyncBsdSocketLib::Poller *poller) : ara::exec::helper::ModelledProcess(cAppId, poller),
-                                                                                      mCommunicator(poller, cFifoPath),
-                                                                                      mStateManagement(poller),
-                                                                                      mPlatformHealthManager(poller, &mCommunicator, cMachineFunctionGroup),
-                                                                                      mExtendedVehicle(poller, &mCommunicator),
-                                                                                      mDiagnosticManager(poller),
-                                                                                      mStateServer{nullptr}
+        ExecutionManagement::ExecutionManagement(
+            AsyncBsdSocketLib::Poller *poller) :
+                ara::exec::helper::ModelledProcess(cAppId, poller),
+                mStateManagement(poller),
+                mStateServer{nullptr}
         {
+        }
+
+        void ExecutionManagement::Register(ara::exec::helper::ModelledProcess *process)
+        {
+            mApplicationProcesses.push_back(process);
         }
 
         helper::RpcConfiguration ExecutionManagement::getRpcConfiguration(
@@ -34,10 +37,12 @@ namespace application
 
             if (_successful)
             {
+                std::cout << "Ehelper::TryGetRpcConfiguration succeed";
                 return _result;
             }
             else
             {
+                std::cout << "Ehelper::TryGetRpcConfiguration failed";
                 throw std::runtime_error("RPC configuration failed.");
             }
         }
@@ -124,9 +129,8 @@ namespace application
             if (mStateServer->TryGetState(cMachineFunctionGroup, _currentState) &&
                 _currentState == cStartUpState)
             {
-                mPlatformHealthManager.Initialize(arguments);
-                mDiagnosticManager.Initialize(arguments);
-                mExtendedVehicle.Initialize(arguments);
+                for (auto *_process : mApplicationProcesses)
+                    _process->Initialize(arguments);
             }
         }
 
@@ -176,20 +180,15 @@ namespace application
                     _running = WaitForActivation();
                 }
 
-                int _evTerminationResult{mExtendedVehicle.Terminate()};
-                int _dmTerminationResult{mDiagnosticManager.Terminate()};
-                int _phmTerminationResult{mPlatformHealthManager.Terminate()};
-                int _smTerminationResult{mStateManagement.Terminate()};
+                int _result{0};
+                for (auto *_process : mApplicationProcesses)
+                    _result += _process->Terminate();
+
+                _result += mStateManagement.Terminate();
 
                 _logStream.Flush();
                 _logStream << "Execution management has been terminated.";
                 Log(cLogLevel, _logStream);
-
-                int _result{
-                    _dmTerminationResult +
-                    _evTerminationResult +
-                    _phmTerminationResult +
-                    _smTerminationResult};
 
                 return _result;
             }
@@ -198,6 +197,7 @@ namespace application
                 _logStream.Flush();
                 _logStream << ex.what();
                 Log(cErrorLevel, _logStream);
+                
 
                 return cUnsuccessfulExitCode;
             }
@@ -205,9 +205,9 @@ namespace application
 
         ExecutionManagement::~ExecutionManagement()
         {
-            mExtendedVehicle.Terminate();
-            mDiagnosticManager.Terminate();
-            mPlatformHealthManager.Terminate();
+            for (auto *_process : mApplicationProcesses)
+                _process->Terminate();
+
             mStateManagement.Terminate();
 
             if (mStateServer)

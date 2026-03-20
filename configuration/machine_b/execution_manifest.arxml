@@ -28,7 +28,7 @@
                             <TP-CONFIGURATION>
                                 <TCP-TP>
                                     <TCP-TP-PORT>
-                                        <PORT-NUMBER>18080</PORT-NUMBER>
+                                        <PORT-NUMBER>18081</PORT-NUMBER>
                                     </TCP-TP-PORT>
                                 </TCP-TP>
                             </TP-CONFIGURATION>
@@ -50,7 +50,7 @@
                             </MODE-DECLARATIONS>
                         </MODE-DECLARATION-GROUP>
                     </FUNCTION-GROUP>
-                </FUNCTION-GROUPS>        
+                </FUNCTION-GROUPS>
             </ELEMENTS>
         </AR-PACKAGE>
     </AR-PACKAGES>

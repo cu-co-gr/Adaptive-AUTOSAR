@@ -25,6 +25,7 @@ namespace application
 
             ara::com::helper::NetworkLayer<ara::com::someip::sd::SomeIpSdMessage> *mNetworkLayer;
             ara::com::someip::sd::SomeIpSdClient *mSdClient;
+            ara::com::helper::SdClientState mLastSdState;
             const ara::core::InstanceSpecifier *mEventSpecifier;
             ara::diag::Event *mEvent;
             const ara::core::InstanceSpecifier *mMonitorSpecifier;

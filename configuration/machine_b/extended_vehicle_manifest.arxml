@@ -5,9 +5,9 @@
             <SHORT-NAME>ExtendedVehicleManifest</SHORT-NAME>
             <ELEMENTS>
                 <DO-IP-INSTANTIATION>
-                    <EID>1</EID>
+                    <EID>2</EID>
                     <GID>1</GID>
-                    <LOGICAL-ADDRESS>1</LOGICAL-ADDRESS>
+                    <LOGICAL-ADDRESS>2</LOGICAL-ADDRESS>
                     <NETWORK-INTERFACES>
                         <DO-IP-NETWORK-CONFIGURATION>
                             <MAX-INITIAL-VEHICLE-ANNOUNCEMENT-TIME>0</MAX-INITIAL-VEHICLE-ANNOUNCEMENT-TIME>
@@ -39,7 +39,7 @@
                             <TP-CONFIGURATION>
                                 <TCP-TP>
                                     <TCP-TP-PORT>
-                                        <PORT-NUMBER>8081</PORT-NUMBER>
+                                        <PORT-NUMBER>8082</PORT-NUMBER>
                                     </TCP-TP-PORT>
                                 </TCP-TP>
                             </TP-CONFIGURATION>
@@ -67,7 +67,7 @@
                             <INITIAL-DELAY-MAX-VALUE>200</INITIAL-DELAY-MAX-VALUE>
                         </INITIAL-OFFER-BEHAVIOR>
                     </SD-SERVER-CONFIG>
-                    <SERVICE-INSTANCE-ID>0</SERVICE-INSTANCE-ID>
+                    <SERVICE-INSTANCE-ID>1</SERVICE-INSTANCE-ID>
                 </PROVIDED-SOMEIP-SERVICE-INSTANCE>
             </ELEMENTS>
         </AR-PACKAGE>

@@ -2,12 +2,11 @@
 #define EXECUTION_MANAGEMENT_H
 
 #include <set>
+#include <vector>
 #include "../../ara/exec/state_server.h"
-#include "../helper/fifo_checkpoint_communicator.h"
-#include "../extended_vehicle.h"
+#include "../../ara/exec/helper/modelled_process.h"
 #include "./state_management.h"
-#include "./platform_health_management.h"
-#include "./diagnostic_manager.h"
+#include "../helper/rpc_configuration.h"
 
 /// @brief AUTOSAR application namespace
 namespace application
@@ -20,18 +19,13 @@ namespace application
         {
         private:
             static const std::string cAppId;
-            static const std::string cFifoPath;
-            const std::string cMachineFunctionGroup{"MachineFG"};
 
-            helper::FifoCheckpointCommunicator mCommunicator;
             StateManagement mStateManagement;
-            PlatformHealthManagement mPlatformHealthManager;
-            ExtendedVehicle mExtendedVehicle;
-            DiagnosticManager mDiagnosticManager;
+            std::vector<ara::exec::helper::ModelledProcess *> mApplicationProcesses;
             ara::exec::StateServer *mStateServer;
 
-            static helper::RpcConfiguration getRpcConfiguration(
-                const std::string &configFilepath);
+            void onStateChange(
+                const std::map<std::string, std::string> &arguments);
 
             static void fillFunctionGroupStates(
                 std::string functionGroupShortName,
@@ -48,20 +42,29 @@ namespace application
                 std::set<std::pair<std::string, std::string>> &functionGroupStates,
                 std::map<std::string, std::string> &initialStates);
 
-            void onStateChange(
-                const std::map<std::string, std::string> &arguments);
-
         protected:
             int Main(
                 const std::atomic_bool *cancellationToken,
                 const std::map<std::string, std::string> &arguments) override;
 
         public:
+            /// @brief Machine function group name shared with collaborating processes
+            static const std::string cMachineFunctionGroup;
+
+            /// @brief Parse RPC configuration from the execution manifest
+            /// @param configFilepath Path to the execution manifest ARXML file
+            static helper::RpcConfiguration getRpcConfiguration(
+                const std::string &configFilepath);
+
             /// @brief Constructor
             /// @param poller Global poller for network communication
-            explicit ExecutionManagement(AsyncBsdSocketLib::Poller *poller);
+            ExecutionManagement(AsyncBsdSocketLib::Poller *poller);
 
             ~ExecutionManagement() override;
+
+            /// @brief Register an application process to be lifecycle-managed
+            /// @param process Non-owning pointer; caller is responsible for lifetime
+            void Register(ara::exec::helper::ModelledProcess *process);
         };
     }
 }

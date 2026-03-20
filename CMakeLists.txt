@@ -301,6 +301,8 @@ add_library(
   ${source_ara_com_someip_rpc_dir}/rpc_client.cpp
   ${source_ara_com_someip_rpc_dir}/socket_rpc_client.h
   ${source_ara_com_someip_rpc_dir}/socket_rpc_client.cpp
+  ${source_ara_com_someip_pubsub_dir}/pubsub_event_network_layer.h
+  ${source_ara_com_someip_pubsub_dir}/pubsub_event_network_layer.cpp
   ${source_ara_com_someip_pubsub_dir}/someip_pubsub_server.h
   ${source_ara_com_someip_pubsub_dir}/someip_pubsub_server.cpp
   ${source_ara_com_someip_pubsub_dir}/someip_pubsub_client.h
@@ -544,6 +546,7 @@ if(build_tests)
     arxml_unit_test
     ${test_arxml_dir}/arxml_node_test.cpp
     ${test_arxml_dir}/arxml_reader_test.cpp
+    ${test_arxml_dir}/multi_instance_manifest_test.cpp
   )
 
   add_executable(

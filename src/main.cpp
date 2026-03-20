@@ -1,5 +1,9 @@
 #include "./application/helper/argument_configuration.h"
+#include "./application/helper/fifo_checkpoint_communicator.h"
 #include "./application/platform/execution_management.h"
+#include "./application/platform/platform_health_management.h"
+#include "./application/extended_vehicle.h"
+#include "./application/platform/diagnostic_manager.h"
 
 bool running;
 AsyncBsdSocketLib::Poller poller;
@@ -21,24 +25,36 @@ int main(int argc, char *argv[])
 {
     application::helper::ArgumentConfiguration _argumentConfiguration(argc, argv);
 
-    bool _successful{_argumentConfiguration.TryAskingVccApiKey()};
-    if (!_successful)
-    {
-        std::cout << "Asking for the VCC API key is faile!";
-        return -1;
-    }
-
-    std::system("clear");
-    _successful = _argumentConfiguration.TryAskingBearToken();
-    if (!_successful)
-    {
-        std::cout << "Asking for the OAuth 2.0 bear key is failed!";
-        return -1;
-    }
+    std::cout << "Running in demo mode (Volvo VCC API not available)." << std::endl;
+    _argumentConfiguration.SetDemoMode();
 
     running = true;
+    const auto &_args = _argumentConfiguration.GetArguments();
+
+    const std::string &_configFilepath{
+        _args.at(application::helper::ArgumentConfiguration::cConfigArgument)};
+    const auto _rpcConfig{
+        application::platform::ExecutionManagement::getRpcConfiguration(
+            _configFilepath)};
+
+    application::helper::FifoCheckpointCommunicator communicator(
+        &poller,
+        "/tmp/fifo_" + std::to_string(_rpcConfig.portNumber));
+
     executionManagement = new application::platform::ExecutionManagement(&poller);
-    executionManagement->Initialize(_argumentConfiguration.GetArguments());
+
+    application::platform::PlatformHealthManagement platformHealthManagement(
+        &poller,
+        &communicator,
+        application::platform::ExecutionManagement::cMachineFunctionGroup);
+    application::ExtendedVehicle extendedVehicle(&poller, &communicator);
+    application::platform::DiagnosticManager diagnosticManager(&poller);
+
+    executionManagement->Register(&platformHealthManagement);
+    executionManagement->Register(&extendedVehicle);
+    executionManagement->Register(&diagnosticManager);
+
+    executionManagement->Initialize(_args);
 
     std::future<void> _future{std::async(std::launch::async, performPolling)};
 

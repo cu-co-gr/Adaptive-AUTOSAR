@@ -116,5 +116,11 @@ namespace application
         {
             return tryAskSafely(message, cBearerTokenArgument);
         }
+
+        void ArgumentConfiguration::SetDemoMode()
+        {
+            mArguments[cApiKeyArgument] = "";
+            mArguments[cBearerTokenArgument] = "";
+        }
     }
 }

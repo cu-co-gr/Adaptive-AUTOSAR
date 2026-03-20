@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    §3.10.2.6  Service Instance Manifest — WatchdogApplication (Machine B)
+
+    Machine B watchdog subscribes to Machine A's ExtendedVehicle service
+    (Instance ID 0). Explicit instance ID ensures cross-machine monitoring only.
+
+    Consumed by: argument_configuration.cpp ("--watchdog" argument key)
+    C++ realisation: application::WatchdogApplication (PLANNED)
+-->
+<AUTOSAR xmlns="http://autosar.org/schema/r4.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://autosar.org/schema/r4.0 autosar_00050.xsd">
+    <AR-PACKAGES>
+        <AR-PACKAGE>
+            <SHORT-NAME>WatchdogManifest</SHORT-NAME>
+            <ELEMENTS>
+                <REQUIRED-SOMEIP-SERVICE-INSTANCE>
+                    <SERVICE-INTERFACE-DEPLOYMENT>
+                        <SERVICE-INTERFACE-ID>5</SERVICE-INTERFACE-ID>
+                        <SERVICE-INTERFACE-VERSION>
+                            <MAJOR-VERSION>1</MAJOR-VERSION>
+                            <MINOR-VERSION>0</MINOR-VERSION>
+                        </SERVICE-INTERFACE-VERSION>
+                    </SERVICE-INTERFACE-DEPLOYMENT>
+                    <REQUIRED-EVENT-GROUPS>
+                        <SOMEIP-REQUIRED-EVENT-GROUP>
+                            <EVENT-GROUP-ID>1</EVENT-GROUP-ID>
+                        </SOMEIP-REQUIRED-EVENT-GROUP>
+                    </REQUIRED-EVENT-GROUPS>
+                    <SD-CLIENT-CONFIG>
+                        <INITIAL-FIND-BEHAVIOR>
+                            <INITIAL-DELAY-MIN-VALUE>100</INITIAL-DELAY-MIN-VALUE>
+                            <INITIAL-DELAY-MAX-VALUE>200</INITIAL-DELAY-MAX-VALUE>
+                        </INITIAL-FIND-BEHAVIOR>
+                    </SD-CLIENT-CONFIG>
+                    <!-- Machine B watches Machine A: Instance ID 0 -->
+                    <SERVICE-INSTANCE-ID>0</SERVICE-INSTANCE-ID>
+                </REQUIRED-SOMEIP-SERVICE-INSTANCE>
+            </ELEMENTS>
+        </AR-PACKAGE>
+    </AR-PACKAGES>
+</AUTOSAR>
