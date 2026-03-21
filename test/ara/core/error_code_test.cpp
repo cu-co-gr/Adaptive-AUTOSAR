@@ -1,3 +1,4 @@
+#include <stdexcept>
 #include <gtest/gtest.h>
 #include "../../../src/ara/core/error_code.h"
 
@@ -20,6 +21,11 @@ namespace ara
             virtual const char *Message(CodeType errorCode) const noexcept override
             {
                 return "";
+            }
+
+            virtual void ThrowAsException(const ErrorCode &errorCode) const noexcept(false) override
+            {
+                throw std::runtime_error{Message(errorCode.Value())};
             }
         };
 

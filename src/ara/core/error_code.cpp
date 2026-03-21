@@ -1,4 +1,3 @@
-#include <stdexcept>
 #include "./error_code.h"
 
 namespace ara
@@ -13,8 +12,7 @@ namespace ara
 
         void ErrorCode::ThrowAsException() const
         {
-            std::runtime_error _exception{Message()};
-            throw _exception;
+            mDomain.ThrowAsException(*this);
         }
     }
 }

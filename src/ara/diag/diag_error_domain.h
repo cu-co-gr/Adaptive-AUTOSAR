@@ -49,6 +49,7 @@ namespace ara
 
             const char *Name() const noexcept override;
             const char *Message(ara::core::ErrorDomain::CodeType errorCode) const noexcept override;
+            void ThrowAsException(const ara::core::ErrorCode &errorCode) const noexcept(false) override;
 
             /// @brief Get the global diagnostic error domain
             /// @returns Pointer to the singleton diagnostic error domain

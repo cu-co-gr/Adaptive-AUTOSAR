@@ -8,28 +8,25 @@ namespace ara
     /// @brief ARA basic core types namespace
     namespace core
     {
+        // Forward declaration to break circular dependency with error_code.h
+        class ErrorCode;
+
         /// @brief A class that defines the domain of an ErrorCode to avoid code interferences
         /// @note The class is literal type and it is recommended that derived classes be literal type as well.
         class ErrorDomain
         {
         public:
+            /// @brief Alias type of the error code
+            using CodeType = int32_t;
             /// @brief Alias type of the domain ID
             using IdType = uint64_t;
-            /// @brief Alias type of the error code
-            using CodeType = uint32_t;
+            /// @brief Alias type for vendor-specific supplementary data
+            using SupportDataType = int32_t;
 
         private:
             IdType mId;
 
         public:
-            /// @brief Constructor
-            /// @param id Error domain ID
-            explicit constexpr ErrorDomain(IdType id) noexcept : mId{id}
-            {
-            }
-
-            ~ErrorDomain() noexcept = default;
-
             ErrorDomain(const ErrorDomain &) = delete;
             ErrorDomain(ErrorDomain &&) = delete;
             ErrorDomain &operator=(const ErrorDomain &) = delete;
@@ -60,6 +57,21 @@ namespace ara
             /// @param errorCode Error code of interest
             /// @returns Error code message in this domain
             virtual const char *Message(CodeType errorCode) const noexcept = 0;
+
+            /// @brief Throw the given errorCode as a domain-specific exception
+            /// @param errorCode The error code to throw
+            virtual void ThrowAsException(const ErrorCode &errorCode) const noexcept(false) = 0;
+
+        protected:
+            /// @brief Constructor
+            /// @param id Error domain ID
+            explicit constexpr ErrorDomain(IdType id) noexcept : mId{id}
+            {
+            }
+
+            /// @brief Destructor
+            /// @note Non-virtual so that this class remains a literal type
+            ~ErrorDomain() noexcept = default;
         };
     }
 }

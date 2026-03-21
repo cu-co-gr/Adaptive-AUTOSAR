@@ -1,3 +1,4 @@
+#include <stdexcept>
 #include "./diag_error_domain.h"
 
 namespace ara
@@ -61,6 +62,12 @@ namespace ara
             }
 
             return mInstnace;
+        }
+
+        void DiagErrorDomain::ThrowAsException(
+            const ara::core::ErrorCode &errorCode) const noexcept(false)
+        {
+            throw std::runtime_error{Message(errorCode.Value())};
         }
 
         ara::core::ErrorCode DiagErrorDomain::MakeErrorCode(DiagErrc code) noexcept

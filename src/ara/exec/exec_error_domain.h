@@ -39,6 +39,9 @@ namespace ara
 
             const char *Message(
                 core::ErrorDomain::CodeType errorCode) const noexcept override;
+
+            void ThrowAsException(
+                const core::ErrorCode &errorCode) const noexcept(false) override;
         };
     }
 }

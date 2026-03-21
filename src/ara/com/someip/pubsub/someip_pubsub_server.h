@@ -18,12 +18,16 @@ namespace ara
         {
             namespace pubsub
             {
+                class PubSubEventNetworkLayer;
+
                 /// @brief SOME/IP publish/subscribe server
                 class SomeIpPubSubServer
                 {
                 private:
                     helper::FiniteStateMachine<helper::PubSubState> mStateMachine;
                     helper::NetworkLayer<sd::SomeIpSdMessage> *mCommunicationLayer;
+                    PubSubEventNetworkLayer *mEventLayer;
+                    uint16_t mSessionId;
                     const uint16_t mServiceId;
                     const uint16_t mInstanceId;
                     const uint8_t mMajorVersion;
@@ -57,6 +61,18 @@ namespace ara
                         uint16_t eventgroupId,
                         helper::Ipv4Address ipAddress,
                         uint16_t port);
+
+                    /// @brief Set the event notification network layer
+                    /// @param eventLayer UDP sender for event notifications (ownership not transferred)
+                    void SetEventLayer(PubSubEventNetworkLayer *eventLayer) noexcept;
+
+                    /// @brief Publish an event notification to all subscribers
+                    /// @param eventId SOME/IP event ID (e.g., 0x8001 for the first event)
+                    /// @param payload Serialized event data
+                    /// @note No-op when not in Subscribed state or no event layer is set
+                    void Publish(
+                        uint16_t eventId,
+                        const std::vector<uint8_t> &payload);
 
                     /// @brief Start the server
                     void Start();

@@ -1,4 +1,6 @@
 #include "../../entry/eventgroup_entry.h"
+#include "../../helper/payload_helper.h"
+#include "./pubsub_event_network_layer.h"
 #include "./someip_pubsub_server.h"
 
 namespace ara
@@ -17,6 +19,8 @@ namespace ara
                     uint16_t eventgroupId,
                     helper::Ipv4Address ipAddress,
                     uint16_t port) : mCommunicationLayer{networkLayer},
+                                     mEventLayer{nullptr},
+                                     mSessionId{1},
                                      mServiceId{serviceId},
                                      mInstanceId{instanceId},
                                      mMajorVersion{majorVersion},
@@ -110,6 +114,64 @@ namespace ara
 
                     _acknowledgeMessage.AddEntry(std::move(_acknowledgeEntry));
                     mCommunicationLayer->Send(_acknowledgeMessage);
+                }
+
+                void SomeIpPubSubServer::SetEventLayer(
+                    PubSubEventNetworkLayer *eventLayer) noexcept
+                {
+                    mEventLayer = eventLayer;
+                }
+
+                void SomeIpPubSubServer::Publish(
+                    uint16_t eventId,
+                    const std::vector<uint8_t> &payload)
+                {
+                    if (mEventLayer == nullptr)
+                    {
+                        return;
+                    }
+
+                    if (GetState() != helper::PubSubState::Subscribed)
+                    {
+                        return;
+                    }
+
+                    const uint8_t cProtocolVersion{1};
+                    // SomeIpMessageType::Notification = 0x02
+                    const uint8_t cNotificationType{0x02};
+                    // SomeIpReturnCode::eOK = 0x00
+                    const uint8_t cReturnCode{0x00};
+
+                    auto _messageId =
+                        static_cast<uint32_t>(mServiceId) << 16 |
+                        static_cast<uint32_t>(eventId);
+                    // Length covers the 8-byte sub-header + payload
+                    auto _length =
+                        static_cast<uint32_t>(8 + payload.size());
+
+                    std::vector<uint8_t> _notification;
+                    helper::Inject(_notification, _messageId);
+                    helper::Inject(_notification, _length);
+                    // Client ID = 0 (server-initiated notification)
+                    helper::Inject(_notification, static_cast<uint16_t>(0));
+                    helper::Inject(_notification, mSessionId);
+
+                    _notification.push_back(cProtocolVersion);
+                    _notification.push_back(mMajorVersion);
+                    _notification.push_back(cNotificationType);
+                    _notification.push_back(cReturnCode);
+
+                    _notification.insert(
+                        _notification.end(),
+                        payload.cbegin(),
+                        payload.cend());
+
+                    if (++mSessionId == 0)
+                    {
+                        mSessionId = 1;
+                    }
+
+                    mEventLayer->SendRaw(_notification);
                 }
 
                 void SomeIpPubSubServer::Start()

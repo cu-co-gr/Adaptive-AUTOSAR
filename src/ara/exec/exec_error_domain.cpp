@@ -1,4 +1,4 @@
-#include "./exec_error_domain.h"
+#include "./exec_exception.h"
 
 namespace ara
 {
@@ -52,6 +52,12 @@ namespace ara
             default:
                 return "Unsupported error code";
             }
+        }
+
+        void ExecErrorDomain::ThrowAsException(
+            const core::ErrorCode &errorCode) const noexcept(false)
+        {
+            throw ExecException{errorCode};
         }
     }
 }
