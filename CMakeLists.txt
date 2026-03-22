@@ -303,6 +303,8 @@ add_library(
   ${source_ara_com_someip_rpc_dir}/socket_rpc_client.cpp
   ${source_ara_com_someip_pubsub_dir}/pubsub_event_network_layer.h
   ${source_ara_com_someip_pubsub_dir}/pubsub_event_network_layer.cpp
+  ${source_ara_com_someip_pubsub_dir}/pubsub_event_receiver.h
+  ${source_ara_com_someip_pubsub_dir}/pubsub_event_receiver.cpp
   ${source_ara_com_someip_pubsub_dir}/someip_pubsub_server.h
   ${source_ara_com_someip_pubsub_dir}/someip_pubsub_server.cpp
   ${source_ara_com_someip_pubsub_dir}/someip_pubsub_client.h
@@ -491,6 +493,8 @@ add_executable(
   ${source_dir}/main.cpp
   ${source_application_dir}/extended_vehicle.h
   ${source_application_dir}/extended_vehicle.cpp
+  ${source_application_dir}/watchdog_application.h
+  ${source_application_dir}/watchdog_application.cpp
   ${source_application_helper_dir}/argument_configuration.h
   ${source_application_helper_dir}/argument_configuration.cpp
   ${source_application_helper_dir}/curl_wrapper.h

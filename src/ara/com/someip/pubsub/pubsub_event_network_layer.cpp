@@ -11,11 +11,17 @@ namespace ara
             {
                 PubSubEventNetworkLayer::PubSubEventNetworkLayer(
                     AsyncBsdSocketLib::Poller *poller,
+                    std::string nicIp,
                     std::string eventIp,
-                    uint16_t eventPort) : mEventIp{std::move(eventIp)},
+                    uint16_t eventPort) : mEventIp{eventIp},
                                           mEventPort{eventPort},
                                           mPoller{poller},
-                                          mUdpSocket{"0.0.0.0", 0}
+                                          mUdpSocket{
+                                              eventIp,
+                                              eventPort,
+                                              std::move(nicIp),
+                                              std::move(eventIp),
+                                              true}
                 {
                     bool _successful{mUdpSocket.TrySetup()};
                     if (!_successful)

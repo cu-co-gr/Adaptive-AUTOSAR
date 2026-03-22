@@ -24,6 +24,8 @@
                     <REQUIRED-EVENT-GROUPS>
                         <SOMEIP-REQUIRED-EVENT-GROUP>
                             <EVENT-GROUP-ID>1</EVENT-GROUP-ID>
+                            <IPV-4-MULTICAST-IP-ADDRESS>239.0.0.1</IPV-4-MULTICAST-IP-ADDRESS>
+                            <EVENT-MULTICAST-UDP-PORT>5555</EVENT-MULTICAST-UDP-PORT>
                         </SOMEIP-REQUIRED-EVENT-GROUP>
                     </REQUIRED-EVENT-GROUPS>
                     <SD-CLIENT-CONFIG>
@@ -34,6 +36,8 @@
                     </SD-CLIENT-CONFIG>
                     <!-- Machine A watches Machine B: Instance ID 1 -->
                     <SERVICE-INSTANCE-ID>1</SERVICE-INSTANCE-ID>
+                    <!-- Machine A is itself instance 0 -->
+                    <WATCHDOG-INSTANCE-ID>0</WATCHDOG-INSTANCE-ID>
                 </REQUIRED-SOMEIP-SERVICE-INSTANCE>
             </ELEMENTS>
         </AR-PACKAGE>

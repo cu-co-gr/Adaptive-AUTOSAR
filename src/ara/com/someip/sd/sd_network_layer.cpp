@@ -54,6 +54,20 @@ namespace ara
                     if (_receivedSize > 0 &&
                         _port == cPort && _ipAddress == cNicIpAddress)
                     {
+                        // SOME/IP-SD messages have Service ID = 0xFFFF.
+                        // Event notifications (Service ID != 0xFFFF) share the
+                        // same multicast address:port and must be silently dropped
+                        // here to avoid corrupting the SD deserializer.
+                        const uint16_t cSdServiceId{0xFFFF};
+                        uint16_t _serviceId{
+                            static_cast<uint16_t>(
+                                static_cast<uint16_t>(_buffer[0]) << 8 |
+                                static_cast<uint16_t>(_buffer[1]))};
+                        if (_serviceId != cSdServiceId)
+                        {
+                            return;
+                        }
+
                         const std::vector<uint8_t> cRequestPayload(
                             std::make_move_iterator(_buffer.begin()),
                             std::make_move_iterator(_buffer.begin() + _receivedSize));

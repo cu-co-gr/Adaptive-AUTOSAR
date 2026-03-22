@@ -26,6 +26,8 @@ namespace application
             static const std::string cDmConfigArgument;
             /// @brief Platform Health Management manifest filename argument key
             static const std::string cPhmConfigArgument;
+            /// @brief Watchdog application manifest filename argument key
+            static const std::string cWatchdogConfigArgument;
             /// @brief VCC API key argument key
             static const std::string cApiKeyArgument;
             /// @brief OAuth 2.0 bearer token argument key
@@ -44,7 +46,8 @@ namespace application
                 std::string defaultConfigFile = "../../configuration/execution_manifest.arxml",
                 std::string extendedVehicleConfigFile = "../../configuration/extended_vehicle_manifest.arxml",
                 std::string diagnosticManagerConfigFile = "../../configuration/diagnostic_manager_manifest.arxml",
-                std::string healthMonitoringConfigFile = "../../configuration/health_monitoring_manifest.arxml");
+                std::string healthMonitoringConfigFile = "../../configuration/health_monitoring_manifest.arxml",
+                std::string watchdogConfigFile = "../../configuration/machine_a/watchdog_manifest.arxml");
             ArgumentConfiguration() = delete;
 
             /// @brief Arguments property getter

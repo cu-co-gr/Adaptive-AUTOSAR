@@ -168,6 +168,8 @@ namespace application
 
     void ExtendedVehicle::configurePubSubServer(const arxml::ArxmlReader &reader)
     {
+        const std::string cNicIpAddress{"127.0.0.1"};
+
         const arxml::ArxmlNode cEventGroupIdNode{
             reader.GetRootNode({"AUTOSAR",
                                 "AR-PACKAGES",
@@ -228,6 +230,7 @@ namespace application
         const auto cEventGroupId{cEventGroupIdNode.GetValue<uint16_t>()};
         const auto cServiceId{cServiceIdNode.GetValue<uint16_t>()};
         const auto cInstanceId{cInstanceIdNode.GetValue<uint16_t>()};
+        mPublisherInstanceId = cInstanceId;
         const auto cMajorVersion{cMajorVersionNode.GetValue<uint8_t>()};
         const auto cMulticastIp{cMulticastIpNode.GetValue<std::string>()};
         const auto cMulticastPort{cMulticastPortNode.GetValue<uint16_t>()};
@@ -244,7 +247,7 @@ namespace application
 
         mEventLayer =
             new ara::com::someip::pubsub::PubSubEventNetworkLayer(
-                Poller, cMulticastIp, cMulticastPort);
+                Poller, cNicIpAddress, cMulticastIp, cMulticastPort);
 
         mPubSubServer->SetEventLayer(mEventLayer);
     }
@@ -268,6 +271,7 @@ namespace application
                 i < vin.size() ? static_cast<uint8_t>(vin[i]) : 0);
         }
         _payload.push_back(connectedToCloud ? 1 : 0);
+        _payload.push_back(static_cast<uint8_t>(mPublisherInstanceId));
 
         // Event ID for TelematicControlModuleEvent per service interface ARXML
         const uint16_t cTelematicEventId{0x8001};
@@ -446,7 +450,7 @@ namespace application
                     PhmCheckpointType::DeadlineTargetCheckpoint);
 
                 ++_heartbeatCounter;
-                if (_heartbeatCounter % 500 == 0)
+                if (_heartbeatCounter % 100 == 0)
                 {
                     ara::log::LogStream _hbStream;
                     _hbStream << "[Heartbeat] ExtendedVehicle alive"

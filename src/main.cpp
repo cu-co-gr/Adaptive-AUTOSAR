@@ -4,6 +4,7 @@
 #include "./application/platform/platform_health_management.h"
 #include "./application/extended_vehicle.h"
 #include "./application/platform/diagnostic_manager.h"
+#include "./application/watchdog_application.h"
 
 bool running;
 AsyncBsdSocketLib::Poller poller;
@@ -49,10 +50,12 @@ int main(int argc, char *argv[])
         application::platform::ExecutionManagement::cMachineFunctionGroup);
     application::ExtendedVehicle extendedVehicle(&poller, &communicator);
     application::platform::DiagnosticManager diagnosticManager(&poller);
+    application::WatchdogApplication watchdogApplication(&poller);
 
     executionManagement->Register(&platformHealthManagement);
     executionManagement->Register(&extendedVehicle);
     executionManagement->Register(&diagnosticManager);
+    executionManagement->Register(&watchdogApplication);
 
     executionManagement->Initialize(_args);
 

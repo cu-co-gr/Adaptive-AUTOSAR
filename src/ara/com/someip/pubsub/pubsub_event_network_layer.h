@@ -35,11 +35,13 @@ namespace ara
 
                     /// @brief Constructor
                     /// @param poller Global async poller
+                    /// @param nicIp Network interface IP to use for multicast sending
                     /// @param eventIp Event multicast IP address
                     /// @param eventPort Event multicast UDP port
                     /// @throws std::runtime_error if socket setup or poller registration fails
                     PubSubEventNetworkLayer(
                         AsyncBsdSocketLib::Poller *poller,
+                        std::string nicIp,
                         std::string eventIp,
                         uint16_t eventPort);
 

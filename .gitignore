@@ -1,9 +1,18 @@
 # Visual Studio Code settings
-.vscode/c_cpp_properties.json
-.vscode/settings.json
+.vscode/
 
 # CMake build
 build/
 
 # Doxygen HTML
 doc/html/
+
+# Claude Code internals
+.claude/
+memory/
+
+# Reference PDFs and large assets
+doc/autosar_specs/
+
+# Ad-hoc test output
+Testing/

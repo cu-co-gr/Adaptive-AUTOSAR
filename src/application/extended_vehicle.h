@@ -42,6 +42,7 @@ namespace application
         helper::CurlWrapper *mCurl;
         doip::DoipServer *mDoipServer;
 
+        uint16_t mPublisherInstanceId{0};
         std::string mResourcesUrl;
 
         void configureNetworkLayer(const arxml::ArxmlReader &reader);

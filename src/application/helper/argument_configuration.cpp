@@ -11,6 +11,7 @@ namespace application
         const std::string ArgumentConfiguration::cEvConfigArgument{"evconfig"};
         const std::string ArgumentConfiguration::cDmConfigArgument{"dmconfig"};
         const std::string ArgumentConfiguration::cPhmConfigArgument{"phmconfig"};
+        const std::string ArgumentConfiguration::cWatchdogConfigArgument{"watchdogconfig"};
         const std::string ArgumentConfiguration::cApiKeyArgument{"vccapikey"};
         const std::string ArgumentConfiguration::cBearerTokenArgument{"bearertoken"};
 
@@ -20,12 +21,14 @@ namespace application
             std::string defaultConfigFile,
             std::string extendedVehicleConfigFile,
             std::string diagnosticManagerConfigFile,
-            std::string healthMonitoringConfigFile)
+            std::string healthMonitoringConfigFile,
+            std::string watchdogConfigFile)
         {
             const int cConfigArgumentIndex{1};
             const int cEvConfigArgumentIndex{2};
             const int cDmConfigArgumentIndex{3};
             const int cPhmConfigArgumentIndex{4};
+            const int cWatchdogConfigArgumentIndex{5};
 
             if (argc > cPhmConfigArgumentIndex)
             {
@@ -40,6 +43,24 @@ namespace application
 
                 std::string _phmConfigFilepath{argv[cPhmConfigArgumentIndex]};
                 mArguments[cPhmConfigArgument] = _phmConfigFilepath;
+
+                if (argc > cWatchdogConfigArgumentIndex)
+                {
+                    mArguments[cWatchdogConfigArgument] =
+                        argv[cWatchdogConfigArgumentIndex];
+                }
+                else
+                {
+                    // Derive watchdog manifest from the execution manifest directory
+                    std::string _execPath{argv[cConfigArgumentIndex]};
+                    std::size_t _sep{_execPath.find_last_of("/\\")};
+                    std::string _dir{
+                        _sep != std::string::npos
+                            ? _execPath.substr(0, _sep + 1)
+                            : ""};
+                    mArguments[cWatchdogConfigArgument] =
+                        _dir + "watchdog_manifest.arxml";
+                }
             }
             else
             {
@@ -47,6 +68,7 @@ namespace application
                 mArguments[cEvConfigArgument] = extendedVehicleConfigFile;
                 mArguments[cDmConfigArgument] = diagnosticManagerConfigFile;
                 mArguments[cPhmConfigArgument] = healthMonitoringConfigFile;
+                mArguments[cWatchdogConfigArgument] = watchdogConfigFile;
             }
         }
 
