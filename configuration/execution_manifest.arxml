@@ -50,7 +50,47 @@
                             </MODE-DECLARATIONS>
                         </MODE-DECLARATION-GROUP>
                     </FUNCTION-GROUP>
-                </FUNCTION-GROUPS>        
+                </FUNCTION-GROUPS>
+                <PROCESSES>
+                    <PROCESS>
+                        <SHORT-NAME>StateManagement</SHORT-NAME>
+                        <EXECUTABLE-PATH>./build/bin/state_management</EXECUTABLE-PATH>
+                        <BOOTSTRAP>true</BOOTSTRAP>
+                    </PROCESS>
+                    <PROCESS>
+                        <SHORT-NAME>PlatformHealthManagement</SHORT-NAME>
+                        <EXECUTABLE-PATH>./build/bin/platform_health_management</EXECUTABLE-PATH>
+                        <BOOTSTRAP>false</BOOTSTRAP>
+                        <FUNCTION-GROUP-STATE-IREFS>
+                            <FUNCTION-GROUP-STATE-IREF>
+                                <FUNCTION-GROUP-REF>MachineFG</FUNCTION-GROUP-REF>
+                                <FUNCTION-GROUP-STATE-REF>StartUp</FUNCTION-GROUP-STATE-REF>
+                            </FUNCTION-GROUP-STATE-IREF>
+                        </FUNCTION-GROUP-STATE-IREFS>
+                    </PROCESS>
+                    <PROCESS>
+                        <SHORT-NAME>ExtendedVehicle</SHORT-NAME>
+                        <EXECUTABLE-PATH>./build/bin/extended_vehicle</EXECUTABLE-PATH>
+                        <BOOTSTRAP>false</BOOTSTRAP>
+                        <FUNCTION-GROUP-STATE-IREFS>
+                            <FUNCTION-GROUP-STATE-IREF>
+                                <FUNCTION-GROUP-REF>MachineFG</FUNCTION-GROUP-REF>
+                                <FUNCTION-GROUP-STATE-REF>StartUp</FUNCTION-GROUP-STATE-REF>
+                            </FUNCTION-GROUP-STATE-IREF>
+                        </FUNCTION-GROUP-STATE-IREFS>
+                    </PROCESS>
+                    <PROCESS>
+                        <SHORT-NAME>DiagnosticManager</SHORT-NAME>
+                        <EXECUTABLE-PATH>./build/bin/diagnostic_manager</EXECUTABLE-PATH>
+                        <BOOTSTRAP>false</BOOTSTRAP>
+                        <FUNCTION-GROUP-STATE-IREFS>
+                            <FUNCTION-GROUP-STATE-IREF>
+                                <FUNCTION-GROUP-REF>MachineFG</FUNCTION-GROUP-REF>
+                                <FUNCTION-GROUP-STATE-REF>StartUp</FUNCTION-GROUP-STATE-REF>
+                            </FUNCTION-GROUP-STATE-IREF>
+                        </FUNCTION-GROUP-STATE-IREFS>
+                    </PROCESS>
+                </PROCESSES>
             </ELEMENTS>
         </AR-PACKAGE>
     </AR-PACKAGES>

@@ -1,6 +1,7 @@
 #include "../../ara/com/someip/rpc/socket_rpc_server.h"
 #include "../../ara/exec/execution_server.h"
 #include "../helper/argument_configuration.h"
+#include "../../arxml/arxml_reader.h"
 #include "./execution_management.h"
 
 namespace application
@@ -118,6 +119,66 @@ namespace application
                 fillFunctionGroupStates(
                     cShortName, cNodeContent, functionGroupStates);
             }
+        }
+
+        std::vector<ProcessDescriptor> ExecutionManagement::parseProcessDescriptors(
+            const std::string &configFilepath)
+        {
+            std::vector<ProcessDescriptor> _result;
+
+            const arxml::ArxmlReader cArxmlReader(configFilepath);
+
+            const arxml::ArxmlNodeRange cProcessNodes{
+                cArxmlReader.GetNodes(
+                    {"AUTOSAR", "AR-PACKAGES", "AR-PACKAGE", "ELEMENTS", "PROCESSES"})};
+
+            for (const auto cProcessNode : cProcessNodes)
+            {
+                ProcessDescriptor _descriptor;
+                _descriptor.shortName = cProcessNode.GetShortName();
+                const std::string cContent{cProcessNode.GetContent()};
+
+                const arxml::ArxmlReader cProcessReader(
+                    cContent.c_str(), cContent.length());
+
+                _descriptor.executablePath =
+                    cProcessReader.GetRootNode(
+                        {"PROCESS", "EXECUTABLE-PATH"})
+                        .GetValue<std::string>();
+
+                const std::string cBootstrapStr{
+                    cProcessReader.GetRootNode(
+                        {"PROCESS", "BOOTSTRAP"})
+                        .GetValue<std::string>()};
+                _descriptor.isBootstrap = (cBootstrapStr == "true");
+
+                const arxml::ArxmlNodeRange cIrefNodes{
+                    cProcessReader.GetNodes(
+                        {"PROCESS", "FUNCTION-GROUP-STATE-IREFS"})};
+
+                for (const auto cIrefNode : cIrefNodes)
+                {
+                    const std::string cIrefContent{cIrefNode.GetContent()};
+                    const arxml::ArxmlReader cIrefReader(
+                        cIrefContent.c_str(), cIrefContent.length());
+
+                    std::string _fg{
+                        cIrefReader.GetRootNode(
+                            {"FUNCTION-GROUP-STATE-IREF", "FUNCTION-GROUP-REF"})
+                            .GetValue<std::string>()};
+                    std::string _state{
+                        cIrefReader.GetRootNode(
+                            {"FUNCTION-GROUP-STATE-IREF", "FUNCTION-GROUP-STATE-REF"})
+                            .GetValue<std::string>()};
+
+                    _descriptor.activatingStates.emplace(
+                        std::move(_fg), std::move(_state));
+                }
+
+                _result.push_back(std::move(_descriptor));
+            }
+
+            return _result;
         }
 
         void ExecutionManagement::onStateChange(

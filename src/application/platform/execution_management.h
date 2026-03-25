@@ -2,6 +2,8 @@
 #define EXECUTION_MANAGEMENT_H
 
 #include <set>
+#include <string>
+#include <utility>
 #include <vector>
 #include "../../ara/exec/state_server.h"
 #include "../../ara/exec/helper/modelled_process.h"
@@ -14,6 +16,15 @@ namespace application
     /// @brief AUTOSAR platform application namespace
     namespace platform
     {
+        /// @brief Describes a managed process as parsed from the execution manifest
+        struct ProcessDescriptor
+        {
+            std::string shortName;
+            std::string executablePath;
+            bool isBootstrap{false};
+            std::set<std::pair<std::string, std::string>> activatingStates;
+        };
+
         /// @brief Execution managment modelled process
         class ExecutionManagement : public ara::exec::helper::ModelledProcess
         {
@@ -41,6 +52,9 @@ namespace application
                 const std::string &configFilepath,
                 std::set<std::pair<std::string, std::string>> &functionGroupStates,
                 std::map<std::string, std::string> &initialStates);
+
+            static std::vector<ProcessDescriptor> parseProcessDescriptors(
+                const std::string &configFilepath);
 
         protected:
             int Main(

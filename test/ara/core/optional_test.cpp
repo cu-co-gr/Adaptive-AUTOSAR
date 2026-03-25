@@ -144,6 +144,22 @@ namespace ara
             EXPECT_TRUE(_optional == _otherOptional);
         }
 
+        TEST(OptionalTest, ArrowOperator)
+        {
+            struct Point
+            {
+                int x{42};
+                int y{7};
+            };
+
+            Optional<Point> _optional{Point{}};
+            EXPECT_EQ(42, _optional->x);
+            EXPECT_EQ(7, _optional->y);
+
+            Optional<Point> _empty;
+            EXPECT_THROW({ (void)_empty->x; }, std::runtime_error);
+        }
+
         TEST(OptionalTest, InequalityOperator)
         {
             Optional<bool> _optional;
