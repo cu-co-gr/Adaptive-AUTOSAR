@@ -13,6 +13,7 @@ memory/
 
 # Reference PDFs and large assets
 doc/autosar_specs/
+doc/LearningPath.md
 
 # Ad-hoc test output
 Testing/

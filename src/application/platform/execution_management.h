@@ -7,7 +7,7 @@
 #include <vector>
 #include "../../ara/exec/state_server.h"
 #include "../../ara/exec/helper/modelled_process.h"
-#include "./state_management.h"
+#include "./process_manager.h"
 #include "../helper/rpc_configuration.h"
 
 /// @brief AUTOSAR application namespace
@@ -31,8 +31,9 @@ namespace application
         private:
             static const std::string cAppId;
 
-            StateManagement mStateManagement;
+            ProcessManager mProcessManager;
             std::vector<ara::exec::helper::ModelledProcess *> mApplicationProcesses;
+            std::vector<ProcessDescriptor> mProcessDescriptors;
             ara::exec::StateServer *mStateServer;
 
             void onStateChange(

@@ -14,7 +14,6 @@ namespace application
         ExecutionManagement::ExecutionManagement(
             AsyncBsdSocketLib::Poller *poller) :
                 ara::exec::helper::ModelledProcess(cAppId, poller),
-                mStateManagement(poller),
                 mStateServer{nullptr}
         {
         }
@@ -187,11 +186,27 @@ namespace application
             const std::string cStartUpState{"StartUp"};
 
             std::string _currentState;
-            if (mStateServer->TryGetState(cMachineFunctionGroup, _currentState) &&
-                _currentState == cStartUpState)
+            if (!mStateServer->TryGetState(cMachineFunctionGroup, _currentState))
+                return;
+
+            if (_currentState == cStartUpState)
             {
                 for (auto *_process : mApplicationProcesses)
                     _process->Initialize(arguments);
+            }
+
+            for (const auto &_desc : mProcessDescriptors)
+            {
+                if (!_desc.isBootstrap &&
+                    _desc.activatingStates.count(
+                        {cMachineFunctionGroup, _currentState}))
+                {
+                    mProcessManager.Spawn(
+                        _desc.executablePath,
+                        {_desc.executablePath,
+                         arguments.at(
+                             helper::ArgumentConfiguration::cConfigArgument)});
+                }
             }
         }
 
@@ -216,6 +231,8 @@ namespace application
 
                 ara::exec::ExecutionServer _executionServer(&_rpcServer);
 
+                mProcessDescriptors = parseProcessDescriptors(cConfigFilepath);
+
                 std::set<std::pair<std::string, std::string>> _functionGroupStates;
                 std::map<std::string, std::string> _initialState;
                 fillStates(cConfigFilepath, _functionGroupStates, _initialState);
@@ -223,6 +240,14 @@ namespace application
                     new ara::exec::StateServer(&_rpcServer,
                                                std::move(_functionGroupStates),
                                                std::move(_initialState));
+
+                for (const auto &_desc : mProcessDescriptors)
+                {
+                    if (_desc.isBootstrap)
+                        mProcessManager.Spawn(
+                            _desc.executablePath,
+                            {_desc.executablePath, cConfigFilepath});
+                }
 
                 auto _onStateChangeCallback{
                     std::bind(&ExecutionManagement::onStateChange, this, arguments)};
@@ -232,20 +257,19 @@ namespace application
                 _logStream << "Execution management has been initialized.";
                 Log(cLogLevel, _logStream);
 
-                mStateManagement.Initialize(arguments);
-
                 bool _running{true};
 
                 while (!cancellationToken->load() && _running)
                 {
                     _running = WaitForActivation();
+                    mProcessManager.ReapFinished();
                 }
+
+                mProcessManager.TerminateAll();
 
                 int _result{0};
                 for (auto *_process : mApplicationProcesses)
                     _result += _process->Terminate();
-
-                _result += mStateManagement.Terminate();
 
                 _logStream.Flush();
                 _logStream << "Execution management has been terminated.";
@@ -268,8 +292,6 @@ namespace application
         {
             for (auto *_process : mApplicationProcesses)
                 _process->Terminate();
-
-            mStateManagement.Terminate();
 
             if (mStateServer)
                 delete mStateServer;

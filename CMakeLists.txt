@@ -520,8 +520,8 @@ add_executable(
   ${source_application_doip_dir}/doip_client.cpp
   ${source_application_doip_dir}/obd_to_doip_converter.h
   ${source_application_doip_dir}/obd_to_doip_converter.cpp
-  ${source_application_platform_dir}/state_management.h
-  ${source_application_platform_dir}/state_management.cpp
+  ${source_application_platform_dir}/process_manager.h
+  ${source_application_platform_dir}/process_manager.cpp
   ${source_application_platform_dir}/execution_management.h
   ${source_application_platform_dir}/execution_management.cpp
   ${source_application_platform_dir}/diagnostic_manager.h
@@ -541,6 +541,26 @@ target_link_libraries(
   ara_log
   ara_diag
   ara_phm
+)
+
+add_executable(
+  state_management
+  ${source_application_platform_dir}/state_management_main.cpp
+  ${source_application_platform_dir}/state_management.h
+  ${source_application_platform_dir}/state_management.cpp
+  ${source_application_helper_dir}/argument_configuration.h
+  ${source_application_helper_dir}/argument_configuration.cpp
+  ${source_application_helper_dir}/network_configuration.h
+  ${source_application_helper_dir}/network_configuration.cpp
+  ${source_application_helper_dir}/rpc_configuration.h
+  ${source_application_helper_dir}/rpc_configuration.cpp
+)
+
+target_link_libraries(
+  state_management
+  arxml
+  ara_exec
+  ara_log
 )
 
 if(build_tests)
