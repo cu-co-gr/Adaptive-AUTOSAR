@@ -9,9 +9,12 @@
 # What it does:
 #   1. Starts Machine A and Machine B (each with their own log file)
 #   2. Waits for the event pipeline to warm up (SD + subscription)
-#   3. Checks that periodic events ARE flowing (no "Event expired" in 8 s)
-#   4. Stops Machine A's publisher mid-run and verifies the watchdog on
-#      Machine B fires "Event expired" within the 2 s timeout window
+#   3. Checks all components initialized on both machines
+#   4. Confirms periodic heartbeat from the publisher (≥ 3 in 8 s)
+#   5. Checks that no watchdog expiry occurred while publisher is alive
+#   6. Kills Machine A and verifies each child process terminated cleanly
+#   7. Verifies Machine B's watchdog fires within the 2 s timeout window
+#   8. Kills Machine B and verifies each child process terminated cleanly
 #
 # Pass/fail is printed at the end.  Exit code 0 = all checks passed.
 
@@ -60,14 +63,12 @@ echo ""
 # ── 1. Start both machines ────────────────────────────────────────────────────
 # Machine A: StateManagement + PlatformHealthManagement +
 #            ExtendedVehicle (publisher) + DiagnosticManager
-{ sleep 30; echo; echo; } | "$BIN" \
-    ./configuration/machine_a/execution_manifest.arxml \
+"$BIN" ./configuration/machine_a/execution_manifest.arxml \
     > "$LOG_A" 2>&1 &
 PID_A=$!
 
 # Machine B: StateManagement + WatchdogApplication (subscriber/monitor)
-{ sleep 30; echo; echo; } | "$BIN" \
-    ./configuration/machine_b/execution_manifest.arxml \
+"$BIN" ./configuration/machine_b/execution_manifest.arxml \
     > "$LOG_B" 2>&1 &
 PID_B=$!
 
@@ -77,39 +78,90 @@ echo "Started Machine A (PID $PID_A) and Machine B (PID $PID_B)"
 echo "Waiting 8 s for event pipeline to stabilise..."
 sleep 8
 
-# ── 3. Basic liveness checks ─────────────────────────────────────────────────
+# ── 3. Liveness ───────────────────────────────────────────────────────────────
 echo ""
 echo "--- Liveness ---"
 kill -0 "$PID_A" 2>/dev/null; check "Machine A still running" $?
 kill -0 "$PID_B" 2>/dev/null; check "Machine B still running" $?
 
+# ── 4. Initialization ─────────────────────────────────────────────────────────
 echo ""
-echo "--- Log content after 8 s ---"
-# Machine A runs ExtendedVehicle (publisher) — check heartbeat
-grep -q "\[Heartbeat\] ExtendedVehicle alive" "$LOG_A" 2>/dev/null; check "Machine A: Heartbeat (publisher running)" $?
-# Machine B runs WatchdogApplication (subscriber) — check it started
-grep -q "\[Watchdog\] Started" "$LOG_B" 2>/dev/null; check "Machine B: Watchdog initialised" $?
+echo "--- Initialization (Machine A) ---"
+grep -q "Execution management has been initialized." "$LOG_A" 2>/dev/null
+check "Machine A: EM initialized" $?
+grep -q "State management has been initialized." "$LOG_A" 2>/dev/null
+check "Machine A: SM initialized" $?
+grep -q "Plafrom health management has been initialized." "$LOG_A" 2>/dev/null
+check "Machine A: PHM initialized" $?
+grep -q "Extended Vehicle AA has been initialized." "$LOG_A" 2>/dev/null
+check "Machine A: ExtendedVehicle initialized" $?
+grep -q "Diagnostic Manager has been initialized." "$LOG_A" 2>/dev/null
+check "Machine A: DiagnosticManager initialized" $?
 
-# Events should be flowing — watchdog must NOT have expired yet
+echo ""
+echo "--- Initialization (Machine B) ---"
+grep -q "Execution management has been initialized." "$LOG_B" 2>/dev/null
+check "Machine B: EM initialized" $?
+grep -q "State management has been initialized." "$LOG_B" 2>/dev/null
+check "Machine B: SM initialized" $?
+grep -q "\[Watchdog\] Started" "$LOG_B" 2>/dev/null
+check "Machine B: WatchdogApplication started" $?
+
+# ── 5. Event pipeline ─────────────────────────────────────────────────────────
+echo ""
+echo "--- Event pipeline ---"
+_hb_count=$(grep -c "\[Heartbeat\] ExtendedVehicle alive" "$LOG_A" 2>/dev/null || true)
+[ "$_hb_count" -ge 3 ] && _r=0 || _r=1
+check "Machine A: Heartbeat periodic (≥ 3 in 8 s, got $_hb_count)" $_r
+
 grep -q "\[Watchdog\] Event expired" "$LOG_A" 2>/dev/null && _r=1 || _r=0
 check "Machine A: No watchdog expiry while publisher is alive" $_r
 
 grep -q "\[Watchdog\] Event expired" "$LOG_B" 2>/dev/null && _r=1 || _r=0
 check "Machine B: No watchdog expiry while publisher is alive" $_r
 
-# ── 4. Kill Machine A's publisher and wait for Machine B's watchdog to fire ───
+# ── 6. Kill Machine A — verify watchdog fires and shutdown is clean ────────────
 echo ""
-echo "--- Killing Machine A (PID $PID_A) to test B's watchdog ---"
+echo "--- Killing Machine A (PID $PID_A) ---"
 kill "$PID_A" 2>/dev/null || true
 wait "$PID_A" 2>/dev/null || true
 PID_A=0
 
+echo ""
+echo "--- Machine A clean shutdown ---"
+grep -q "Extended Vehicle AA has been terminated." "$LOG_A" 2>/dev/null
+check "Machine A: ExtendedVehicle terminated" $?
+grep -q "Diagnostic Manager has been terminated." "$LOG_A" 2>/dev/null
+check "Machine A: DiagnosticManager terminated" $?
+grep -q "Plafrom health management has been terminated." "$LOG_A" 2>/dev/null
+check "Machine A: PHM terminated" $?
+grep -q "State management has been terminated." "$LOG_A" 2>/dev/null
+check "Machine A: SM terminated" $?
+grep -q "Execution management has been terminated." "$LOG_A" 2>/dev/null
+check "Machine A: EM terminated" $?
+
+echo ""
 echo "Waiting 4 s (> 2 s watchdog timeout)..."
 sleep 4
 
-grep -q "\[Watchdog\] Event expired" "$LOG_B" 2>/dev/null; check "Machine B: Watchdog fired after publisher went silent" $?
+grep -q "\[Watchdog\] Event expired" "$LOG_B" 2>/dev/null
+check "Machine B: Watchdog fired after publisher went silent" $?
 
-# ── 5. Summary ────────────────────────────────────────────────────────────────
+# ── 7. Kill Machine B — verify shutdown is clean ──────────────────────────────
+echo ""
+echo "--- Killing Machine B (PID $PID_B) ---"
+kill "$PID_B" 2>/dev/null || true
+wait "$PID_B" 2>/dev/null || true
+PID_B=0
+
+echo ""
+echo "--- Machine B clean shutdown ---"
+grep -q "State management has been terminated." "$LOG_B" 2>/dev/null
+check "Machine B: SM terminated" $?
+grep -q "Execution management has been terminated." "$LOG_B" 2>/dev/null
+check "Machine B: EM terminated" $?
+
+# ── 8. Summary ────────────────────────────────────────────────────────────────
 echo ""
 echo "=== Results: $PASS passed, $FAIL failed ==="
 [ "$FAIL" -eq 0 ] && exit 0 || exit 1
