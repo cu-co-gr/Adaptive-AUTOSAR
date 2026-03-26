@@ -5,7 +5,4 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(dirname "$SCRIPT_DIR")"
 
 exec "$REPO_DIR/build/bin/adaptive_autosar" \
-    "$REPO_DIR/configuration/machine_b/execution_manifest.arxml" \
-    "$REPO_DIR/configuration/machine_b/extended_vehicle_manifest.arxml" \
-    "$REPO_DIR/configuration/machine_b/diagnostic_manager_manifest.arxml" \
-    "$REPO_DIR/configuration/machine_b/health_monitoring_manifest.arxml"
+    "$REPO_DIR/configuration/machine_b/execution_manifest.arxml"

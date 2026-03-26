@@ -491,23 +491,74 @@ target_link_libraries(
 add_executable(
   adaptive_autosar
   ${source_dir}/main.cpp
-  ${source_application_dir}/extended_vehicle.h
-  ${source_application_dir}/extended_vehicle.cpp
-  ${source_application_dir}/watchdog_application.h
-  ${source_application_dir}/watchdog_application.cpp
   ${source_application_helper_dir}/argument_configuration.h
   ${source_application_helper_dir}/argument_configuration.cpp
-  ${source_application_helper_dir}/curl_wrapper.h
-  ${source_application_helper_dir}/curl_wrapper.cpp
   ${source_application_helper_dir}/network_configuration.h
   ${source_application_helper_dir}/network_configuration.cpp
   ${source_application_helper_dir}/rpc_configuration.h
   ${source_application_helper_dir}/rpc_configuration.cpp
+  ${source_application_platform_dir}/process_manager.h
+  ${source_application_platform_dir}/process_manager.cpp
+  ${source_application_platform_dir}/execution_management.h
+  ${source_application_platform_dir}/execution_management.cpp
+)
+
+target_link_libraries(
+  adaptive_autosar
+  arxml
+  ara_exec
+  ara_log
+)
+
+add_executable(
+  platform_health_management
+  ${source_application_platform_dir}/platform_health_management_main.cpp
+  ${source_application_platform_dir}/platform_health_management.h
+  ${source_application_platform_dir}/platform_health_management.cpp
+  ${source_application_platform_dir}/execution_management.h
+  ${source_application_platform_dir}/execution_management.cpp
+  ${source_application_platform_dir}/process_manager.h
+  ${source_application_platform_dir}/process_manager.cpp
+  ${source_application_helper_dir}/argument_configuration.h
+  ${source_application_helper_dir}/argument_configuration.cpp
+  ${source_application_helper_dir}/network_configuration.h
+  ${source_application_helper_dir}/network_configuration.cpp
+  ${source_application_helper_dir}/rpc_configuration.h
+  ${source_application_helper_dir}/rpc_configuration.cpp
+  ${source_application_helper_dir}/log_recovery_action.h
+  ${source_application_helper_dir}/log_recovery_action.cpp
+  ${source_application_helper_dir}/fifo_checkpoint_communicator.h
+  ${source_application_helper_dir}/fifo_checkpoint_communicator.cpp
+)
+
+target_link_libraries(
+  platform_health_management
+  arxml
+  ara_exec
+  ara_log
+  ara_phm
+)
+
+add_executable(
+  extended_vehicle
+  ${source_application_dir}/extended_vehicle_main.cpp
+  ${source_application_dir}/extended_vehicle.h
+  ${source_application_dir}/extended_vehicle.cpp
+  ${source_application_platform_dir}/execution_management.h
+  ${source_application_platform_dir}/execution_management.cpp
+  ${source_application_platform_dir}/process_manager.h
+  ${source_application_platform_dir}/process_manager.cpp
+  ${source_application_helper_dir}/argument_configuration.h
+  ${source_application_helper_dir}/argument_configuration.cpp
+  ${source_application_helper_dir}/network_configuration.h
+  ${source_application_helper_dir}/network_configuration.cpp
+  ${source_application_helper_dir}/rpc_configuration.h
+  ${source_application_helper_dir}/rpc_configuration.cpp
+  ${source_application_helper_dir}/curl_wrapper.h
+  ${source_application_helper_dir}/curl_wrapper.cpp
   ${source_application_helper_dir}/read_data_by_identifier.h
   ${source_application_helper_dir}/read_data_by_identifier.cpp
   ${source_application_helper_dir}/memory_cache.h
-  ${source_application_helper_dir}/log_recovery_action.h
-  ${source_application_helper_dir}/log_recovery_action.cpp
   ${source_application_helper_dir}/fifo_checkpoint_communicator.h
   ${source_application_helper_dir}/fifo_checkpoint_communicator.cpp
   ${source_application_doip_dir}/vehicle_id_request_handler.h
@@ -520,18 +571,10 @@ add_executable(
   ${source_application_doip_dir}/doip_client.cpp
   ${source_application_doip_dir}/obd_to_doip_converter.h
   ${source_application_doip_dir}/obd_to_doip_converter.cpp
-  ${source_application_platform_dir}/process_manager.h
-  ${source_application_platform_dir}/process_manager.cpp
-  ${source_application_platform_dir}/execution_management.h
-  ${source_application_platform_dir}/execution_management.cpp
-  ${source_application_platform_dir}/diagnostic_manager.h
-  ${source_application_platform_dir}/diagnostic_manager.cpp
-  ${source_application_platform_dir}/platform_health_management.h
-  ${source_application_platform_dir}/platform_health_management.cpp
 )
 
 target_link_libraries(
-  adaptive_autosar
+  extended_vehicle
   libcurl
   jsoncpp_lib
   obd_ii_emulator
@@ -541,6 +584,62 @@ target_link_libraries(
   ara_log
   ara_diag
   ara_phm
+)
+
+add_executable(
+  diagnostic_manager
+  ${source_application_platform_dir}/diagnostic_manager_main.cpp
+  ${source_application_platform_dir}/diagnostic_manager.h
+  ${source_application_platform_dir}/diagnostic_manager.cpp
+  ${source_application_helper_dir}/argument_configuration.h
+  ${source_application_helper_dir}/argument_configuration.cpp
+  ${source_application_helper_dir}/network_configuration.h
+  ${source_application_helper_dir}/network_configuration.cpp
+  ${source_application_helper_dir}/rpc_configuration.h
+  ${source_application_helper_dir}/rpc_configuration.cpp
+  ${source_application_helper_dir}/curl_wrapper.h
+  ${source_application_helper_dir}/curl_wrapper.cpp
+  ${source_application_helper_dir}/read_data_by_identifier.h
+  ${source_application_helper_dir}/read_data_by_identifier.cpp
+  ${source_application_helper_dir}/memory_cache.h
+  ${source_application_doip_dir}/vehicle_id_request_handler.h
+  ${source_application_doip_dir}/vehicle_id_request_handler.cpp
+  ${source_application_doip_dir}/diag_message_handler.h
+  ${source_application_doip_dir}/diag_message_handler.cpp
+  ${source_application_doip_dir}/doip_server.h
+  ${source_application_doip_dir}/doip_server.cpp
+  ${source_application_doip_dir}/doip_client.h
+  ${source_application_doip_dir}/doip_client.cpp
+  ${source_application_doip_dir}/obd_to_doip_converter.h
+  ${source_application_doip_dir}/obd_to_doip_converter.cpp
+)
+
+target_link_libraries(
+  diagnostic_manager
+  libcurl
+  jsoncpp_lib
+  obd_ii_emulator
+  doip_lib
+  arxml
+  ara_exec
+  ara_log
+  ara_diag
+)
+
+add_executable(
+  watchdog_application
+  ${source_application_dir}/watchdog_application_main.cpp
+  ${source_application_dir}/watchdog_application.h
+  ${source_application_dir}/watchdog_application.cpp
+  ${source_application_helper_dir}/argument_configuration.h
+  ${source_application_helper_dir}/argument_configuration.cpp
+)
+
+target_link_libraries(
+  watchdog_application
+  arxml
+  ara_exec
+  ara_log
 )
 
 add_executable(

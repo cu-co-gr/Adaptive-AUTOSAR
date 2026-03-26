@@ -151,6 +151,14 @@ namespace application
                         .GetValue<std::string>()};
                 _descriptor.isBootstrap = (cBootstrapStr == "true");
 
+                const arxml::ArxmlNodeRange cArgNodes{
+                    cProcessReader.GetNodes(
+                        {"PROCESS", "PROCESS-ARGUMENTS"})};
+
+                for (const auto cArgNode : cArgNodes)
+                    _descriptor.arguments.push_back(
+                        cArgNode.GetValue<std::string>());
+
                 const arxml::ArxmlNodeRange cIrefNodes{
                     cProcessReader.GetNodes(
                         {"PROCESS", "FUNCTION-GROUP-STATE-IREFS"})};
@@ -201,11 +209,12 @@ namespace application
                     _desc.activatingStates.count(
                         {cMachineFunctionGroup, _currentState}))
                 {
-                    mProcessManager.Spawn(
-                        _desc.executablePath,
-                        {_desc.executablePath,
-                         arguments.at(
-                             helper::ArgumentConfiguration::cConfigArgument)});
+                    std::vector<std::string> _argv{_desc.executablePath};
+                    _argv.insert(
+                        _argv.end(),
+                        _desc.arguments.begin(),
+                        _desc.arguments.end());
+                    mProcessManager.Spawn(_desc.executablePath, _argv);
                 }
             }
         }
@@ -241,18 +250,23 @@ namespace application
                                                std::move(_functionGroupStates),
                                                std::move(_initialState));
 
-                for (const auto &_desc : mProcessDescriptors)
-                {
-                    if (_desc.isBootstrap)
-                        mProcessManager.Spawn(
-                            _desc.executablePath,
-                            {_desc.executablePath, cConfigFilepath});
-                }
-
                 auto _onStateChangeCallback{
                     std::bind(&ExecutionManagement::onStateChange, this, arguments)};
                 mStateServer->SetNotifier(
                     cMachineFunctionGroup, _onStateChangeCallback);
+
+                for (const auto &_desc : mProcessDescriptors)
+                {
+                    if (_desc.isBootstrap)
+                    {
+                        std::vector<std::string> _argv{_desc.executablePath};
+                        _argv.insert(
+                            _argv.end(),
+                            _desc.arguments.begin(),
+                            _desc.arguments.end());
+                        mProcessManager.Spawn(_desc.executablePath, _argv);
+                    }
+                }
 
                 _logStream << "Execution management has been initialized.";
                 Log(cLogLevel, _logStream);

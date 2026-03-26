@@ -2,6 +2,14 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Session management
+- At the start of each session, read CONTEXT.md if it exists
+- After completing any significant task, update CONTEXT.md with:
+  - What was just done
+  - Current state of the codebase
+  - Next steps
+- Before ending a session, always update CONTEXT.md
+
 ## Build Commands
 
 Requires GCC 11.2.0 or Clang 14.0.0. All external dependencies are fetched automatically via CMake `FetchContent`.

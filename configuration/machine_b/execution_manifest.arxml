@@ -56,11 +56,18 @@
                         <SHORT-NAME>StateManagement</SHORT-NAME>
                         <EXECUTABLE-PATH>./build/bin/state_management</EXECUTABLE-PATH>
                         <BOOTSTRAP>true</BOOTSTRAP>
+                        <PROCESS-ARGUMENTS>
+                            <PROCESS-ARGUMENT>./configuration/machine_b/execution_manifest.arxml</PROCESS-ARGUMENT>
+                        </PROCESS-ARGUMENTS>
                     </PROCESS>
                     <PROCESS>
                         <SHORT-NAME>WatchdogApplication</SHORT-NAME>
                         <EXECUTABLE-PATH>./build/bin/watchdog_application</EXECUTABLE-PATH>
                         <BOOTSTRAP>false</BOOTSTRAP>
+                        <PROCESS-ARGUMENTS>
+                            <PROCESS-ARGUMENT>./configuration/machine_b/execution_manifest.arxml</PROCESS-ARGUMENT>
+                            <PROCESS-ARGUMENT>./configuration/machine_b/watchdog_manifest.arxml</PROCESS-ARGUMENT>
+                        </PROCESS-ARGUMENTS>
                         <FUNCTION-GROUP-STATE-IREFS>
                             <FUNCTION-GROUP-STATE-IREF>
                                 <FUNCTION-GROUP-REF>MachineFG</FUNCTION-GROUP-REF>

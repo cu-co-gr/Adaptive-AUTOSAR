@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 # Functional test: VehicleStatus pub/sub + Watchdog timeout detection
 #
+# Architecture (split-binary design):
+#   Machine A: StateManagement + PlatformHealthManagement +
+#              ExtendedVehicle (publisher) + DiagnosticManager
+#   Machine B: StateManagement + WatchdogApplication (subscriber/monitor)
+#
 # What it does:
 #   1. Starts Machine A and Machine B (each with their own log file)
 #   2. Waits for the event pipeline to warm up (SD + subscription)
@@ -45,24 +50,24 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
+# Child processes spawned by EM use paths relative to the repo root.
+cd "$REPO_DIR"
+
 echo "=== Watchdog functional test ==="
 echo "Logs: $LOG_A  $LOG_B"
 echo ""
 
 # ── 1. Start both machines ────────────────────────────────────────────────────
+# Machine A: StateManagement + PlatformHealthManagement +
+#            ExtendedVehicle (publisher) + DiagnosticManager
 { sleep 30; echo; echo; } | "$BIN" \
-    "$REPO_DIR/configuration/machine_a/execution_manifest.arxml" \
-    "$REPO_DIR/configuration/machine_a/extended_vehicle_manifest.arxml" \
-    "$REPO_DIR/configuration/machine_a/diagnostic_manager_manifest.arxml" \
-    "$REPO_DIR/configuration/machine_a/health_monitoring_manifest.arxml" \
+    ./configuration/machine_a/execution_manifest.arxml \
     > "$LOG_A" 2>&1 &
 PID_A=$!
 
+# Machine B: StateManagement + WatchdogApplication (subscriber/monitor)
 { sleep 30; echo; echo; } | "$BIN" \
-    "$REPO_DIR/configuration/machine_b/execution_manifest.arxml" \
-    "$REPO_DIR/configuration/machine_b/extended_vehicle_manifest.arxml" \
-    "$REPO_DIR/configuration/machine_b/diagnostic_manager_manifest.arxml" \
-    "$REPO_DIR/configuration/machine_b/health_monitoring_manifest.arxml" \
+    ./configuration/machine_b/execution_manifest.arxml \
     > "$LOG_B" 2>&1 &
 PID_B=$!
 
@@ -80,10 +85,10 @@ kill -0 "$PID_B" 2>/dev/null; check "Machine B still running" $?
 
 echo ""
 echo "--- Log content after 8 s ---"
-grep -q "\[Watchdog\] Started" "$LOG_A" 2>/dev/null; check "Machine A: Watchdog initialised" $?
-grep -q "\[Watchdog\] Started" "$LOG_B" 2>/dev/null; check "Machine B: Watchdog initialised" $?
+# Machine A runs ExtendedVehicle (publisher) — check heartbeat
 grep -q "\[Heartbeat\] ExtendedVehicle alive" "$LOG_A" 2>/dev/null; check "Machine A: Heartbeat (publisher running)" $?
-grep -q "\[Heartbeat\] ExtendedVehicle alive" "$LOG_B" 2>/dev/null; check "Machine B: Heartbeat (publisher running)" $?
+# Machine B runs WatchdogApplication (subscriber) — check it started
+grep -q "\[Watchdog\] Started" "$LOG_B" 2>/dev/null; check "Machine B: Watchdog initialised" $?
 
 # Events should be flowing — watchdog must NOT have expired yet
 grep -q "\[Watchdog\] Event expired" "$LOG_A" 2>/dev/null && _r=1 || _r=0

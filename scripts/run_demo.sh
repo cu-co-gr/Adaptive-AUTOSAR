@@ -26,24 +26,20 @@ cleanup() {
 }
 trap cleanup INT TERM
 
+# Child processes are spawned via fork/exec with paths relative to the repo
+# root, so we must set the working directory before launching.
+cd "$REPO_DIR"
+
 echo "Machine A: Service Instance 0, RPC :18080, DoIP :8081"
 echo "Machine B: Service Instance 1, RPC :18081, DoIP :8082"
 echo "Both discovering each other via SOME/IP SD on multicast 239.0.0.1:5555"
 echo "Press Ctrl+C to stop."
 echo ""
 
-"$BIN" \
-    "$REPO_DIR/configuration/machine_a/execution_manifest.arxml" \
-    "$REPO_DIR/configuration/machine_a/extended_vehicle_manifest.arxml" \
-    "$REPO_DIR/configuration/machine_a/diagnostic_manager_manifest.arxml" \
-    "$REPO_DIR/configuration/machine_a/health_monitoring_manifest.arxml" \
+"$BIN" ./configuration/machine_a/execution_manifest.arxml \
     2>&1 | sed 's/^/[A] /' &
 
-"$BIN" \
-    "$REPO_DIR/configuration/machine_b/execution_manifest.arxml" \
-    "$REPO_DIR/configuration/machine_b/extended_vehicle_manifest.arxml" \
-    "$REPO_DIR/configuration/machine_b/diagnostic_manager_manifest.arxml" \
-    "$REPO_DIR/configuration/machine_b/health_monitoring_manifest.arxml" \
+"$BIN" ./configuration/machine_b/execution_manifest.arxml \
     2>&1 | sed 's/^/[B] /' &
 
 wait

@@ -21,6 +21,7 @@ namespace application
         {
             std::string shortName;
             std::string executablePath;
+            std::vector<std::string> arguments;
             bool isBootstrap{false};
             std::set<std::pair<std::string, std::string>> activatingStates;
         };

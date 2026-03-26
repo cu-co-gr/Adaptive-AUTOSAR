@@ -56,11 +56,18 @@
                         <SHORT-NAME>StateManagement</SHORT-NAME>
                         <EXECUTABLE-PATH>./build/bin/state_management</EXECUTABLE-PATH>
                         <BOOTSTRAP>true</BOOTSTRAP>
+                        <PROCESS-ARGUMENTS>
+                            <PROCESS-ARGUMENT>./configuration/execution_manifest.arxml</PROCESS-ARGUMENT>
+                        </PROCESS-ARGUMENTS>
                     </PROCESS>
                     <PROCESS>
                         <SHORT-NAME>PlatformHealthManagement</SHORT-NAME>
                         <EXECUTABLE-PATH>./build/bin/platform_health_management</EXECUTABLE-PATH>
                         <BOOTSTRAP>false</BOOTSTRAP>
+                        <PROCESS-ARGUMENTS>
+                            <PROCESS-ARGUMENT>./configuration/execution_manifest.arxml</PROCESS-ARGUMENT>
+                            <PROCESS-ARGUMENT>./configuration/health_monitoring_manifest.arxml</PROCESS-ARGUMENT>
+                        </PROCESS-ARGUMENTS>
                         <FUNCTION-GROUP-STATE-IREFS>
                             <FUNCTION-GROUP-STATE-IREF>
                                 <FUNCTION-GROUP-REF>MachineFG</FUNCTION-GROUP-REF>
@@ -72,6 +79,10 @@
                         <SHORT-NAME>ExtendedVehicle</SHORT-NAME>
                         <EXECUTABLE-PATH>./build/bin/extended_vehicle</EXECUTABLE-PATH>
                         <BOOTSTRAP>false</BOOTSTRAP>
+                        <PROCESS-ARGUMENTS>
+                            <PROCESS-ARGUMENT>./configuration/execution_manifest.arxml</PROCESS-ARGUMENT>
+                            <PROCESS-ARGUMENT>./configuration/extended_vehicle_manifest.arxml</PROCESS-ARGUMENT>
+                        </PROCESS-ARGUMENTS>
                         <FUNCTION-GROUP-STATE-IREFS>
                             <FUNCTION-GROUP-STATE-IREF>
                                 <FUNCTION-GROUP-REF>MachineFG</FUNCTION-GROUP-REF>
@@ -83,6 +94,10 @@
                         <SHORT-NAME>DiagnosticManager</SHORT-NAME>
                         <EXECUTABLE-PATH>./build/bin/diagnostic_manager</EXECUTABLE-PATH>
                         <BOOTSTRAP>false</BOOTSTRAP>
+                        <PROCESS-ARGUMENTS>
+                            <PROCESS-ARGUMENT>./configuration/execution_manifest.arxml</PROCESS-ARGUMENT>
+                            <PROCESS-ARGUMENT>./configuration/diagnostic_manager_manifest.arxml</PROCESS-ARGUMENT>
+                        </PROCESS-ARGUMENTS>
                         <FUNCTION-GROUP-STATE-IREFS>
                             <FUNCTION-GROUP-STATE-IREF>
                                 <FUNCTION-GROUP-REF>MachineFG</FUNCTION-GROUP-REF>

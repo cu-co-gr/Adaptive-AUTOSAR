@@ -1,10 +1,19 @@
+#include <atomic>
+#include <chrono>
+#include <csignal>
+#include <future>
+#include <map>
+#include <string>
+#include <thread>
 #include "./application/helper/argument_configuration.h"
-#include "./application/helper/fifo_checkpoint_communicator.h"
 #include "./application/platform/execution_management.h"
-#include "./application/platform/platform_health_management.h"
-#include "./application/extended_vehicle.h"
-#include "./application/platform/diagnostic_manager.h"
-#include "./application/watchdog_application.h"
+
+static std::atomic_bool gRunning{true};
+
+static void onSignal(int)
+{
+    gRunning = false;
+}
 
 bool running;
 AsyncBsdSocketLib::Poller poller;
@@ -24,46 +33,26 @@ void performPolling()
 
 int main(int argc, char *argv[])
 {
-    application::helper::ArgumentConfiguration _argumentConfiguration(argc, argv);
+    std::signal(SIGTERM, onSignal);
+    std::signal(SIGINT, onSignal);
 
-    std::cout << "Running in demo mode (Volvo VCC API not available)." << std::endl;
-    _argumentConfiguration.SetDemoMode();
+    const std::string cDefaultConfig{"./configuration/execution_manifest.arxml"};
+
+    std::map<std::string, std::string> _args;
+    _args[application::helper::ArgumentConfiguration::cConfigArgument] =
+        (argc > 1) ? argv[1] : cDefaultConfig;
 
     running = true;
-    const auto &_args = _argumentConfiguration.GetArguments();
-
-    const std::string &_configFilepath{
-        _args.at(application::helper::ArgumentConfiguration::cConfigArgument)};
-    const auto _rpcConfig{
-        application::platform::ExecutionManagement::getRpcConfiguration(
-            _configFilepath)};
-
-    application::helper::FifoCheckpointCommunicator communicator(
-        &poller,
-        "/tmp/fifo_" + std::to_string(_rpcConfig.portNumber));
 
     executionManagement = new application::platform::ExecutionManagement(&poller);
-
-    application::platform::PlatformHealthManagement platformHealthManagement(
-        &poller,
-        &communicator,
-        application::platform::ExecutionManagement::cMachineFunctionGroup);
-    application::ExtendedVehicle extendedVehicle(&poller, &communicator);
-    application::platform::DiagnosticManager diagnosticManager(&poller);
-    application::WatchdogApplication watchdogApplication(&poller);
-
-    executionManagement->Register(&platformHealthManagement);
-    executionManagement->Register(&extendedVehicle);
-    executionManagement->Register(&diagnosticManager);
-    executionManagement->Register(&watchdogApplication);
 
     executionManagement->Initialize(_args);
 
     std::future<void> _future{std::async(std::launch::async, performPolling)};
 
-    std::getchar();
-    std::system("clear");
-    std::getchar();
+    const std::chrono::milliseconds cSleepDuration{100};
+    while (gRunning)
+        std::this_thread::sleep_for(cSleepDuration);
 
     int _result{executionManagement->Terminate()};
     running = false;
