@@ -52,14 +52,9 @@ Test files live under `test/` and mirror the `src/` directory structure.
 ## Running the Application
 
 ```bash
-./build/bin/adaptive_autosar \
-  ./configuration/execution_manifest.arxml \
-  ./configuration/extended_vehicle_manifest.arxml \
-  ./configuration/diagnostic_manager_manifest.arxml \
-  ./configuration/health_monitoring_manifest.arxml
+./build/bin/adaptive_autosar ./configuration/execution_manifest.arxml
 ```
-
-The application prompts for a Volvo VCC API key and OAuth 2.0 bearer token at startup. Press Enter twice to terminate.
+Note that run_demo launches two instances of the same application with two sets of manifests. This intents to simulate a small system with two machines deployed. 
 
 ## Architecture Overview
 

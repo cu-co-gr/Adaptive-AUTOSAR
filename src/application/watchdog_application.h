@@ -3,35 +3,32 @@
 
 #include <chrono>
 #include <cstdint>
-#include <vector>
 #include "../ara/exec/helper/modelled_process.h"
-#include "../ara/com/someip/sd/sd_network_layer.h"
-#include "../ara/com/someip/pubsub/someip_pubsub_client.h"
-#include "../ara/com/someip/pubsub/pubsub_event_receiver.h"
-#include "../arxml/arxml_reader.h"
 
 namespace application
 {
+    namespace vehicle_status
+    {
+        class VehicleStatusProxy;
+        struct VehicleStatusData;
+    }
+
     /// @brief Watchdog application: subscribes to VehicleStatus events and
     ///        logs a warning when no event is received within the timeout window.
     class WatchdogApplication : public ara::exec::helper::ModelledProcess
     {
     private:
         static const std::string cAppId;
-        static const std::string cNicIp;
         static const std::chrono::milliseconds cEventTimeout;
 
-        ara::com::someip::sd::SdNetworkLayer *mSdNetworkLayer{nullptr};
-        ara::com::someip::pubsub::SomeIpPubSubClient *mSdClient{nullptr};
-        ara::com::someip::pubsub::PubSubEventReceiver *mEventReceiver{nullptr};
+        vehicle_status::VehicleStatusProxy *mProxy{nullptr};
 
         uint16_t mSelfInstanceId{0};
-        uint16_t mPeerInstanceId{0};
         std::chrono::steady_clock::time_point mLastEventTime;
         bool mExpiredLogged{false};
+        bool mFirstEventReceived{false};
 
-        void configureFromManifest(const arxml::ArxmlReader &reader);
-        void onEventReceived(const std::vector<uint8_t> &payload);
+        void onEventReceived(const vehicle_status::VehicleStatusData &data);
 
     protected:
         int Main(

@@ -17,17 +17,33 @@ EM now has a SIGTERM/SIGINT handler so that Ctrl+C triggers a clean shutdown seq
 signal → gRunning=false → Terminate() → ProcessManager::TerminateAll() → SIGTERM to children
 (2s grace) → SIGKILL backstop. Each child runs its own Terminate() within the grace window.
 
+**Stage 6 (current):** ara::com Proxy/Skeleton layer introduced per SWS_CM §8.2–8.4.
+Applications no longer interact with SOME/IP directly.
+
+- `src/ara/com/service_skeleton.h` and `service_proxy.h`: framework base classes.
+- `src-gen/vehicle_status/`: hand-generated Proxy and Skeleton for the VehicleStatus service
+  (VehicleStatusData with Serialize/Deserialize, VehicleStatusSkeleton wrapping SOME/IP SD server
+  + PubSub server, VehicleStatusProxy wrapping SOME/IP SD client + PubSub receiver).
+- `ExtendedVehicle` refactored to use `VehicleStatusSkeleton` exclusively.
+- `WatchdogApplication` refactored to use `VehicleStatusProxy` exclusively; `mFirstEventReceived`
+  flag added so the watchdog timeout only fires after at least one event has been seen (avoids
+  false expiry during SD discovery startup window).
+- `test_watchdog_event.sh` cleanup() extended with pkill for orphaned child processes; `-a` flag
+  added to all grep calls to handle binary log files; watchdog-fired check moved after Machine B
+  kill to guarantee log buffer flush.
+- All 21 functional test checks pass; 475/479 unit tests pass (4 pre-existing env failures).
+
 ## TODOS
 
-1. ~~Confirm if all processes are terminated correctly~~ — **Done.** Root cause was that `main.cpp`
-   had no signal handler, so EM died immediately on Ctrl+C without calling TerminateAll().
-   Fixed in Stage 5.
+1. Stage 7 (deferred): ExecutionClient decoupling.
+   Child process mains call `ExecutionManagement::getRpcConfiguration()` to derive the PHM FIFO
+   path. This couples non-EM processes to an EM class header. Fix: add `<FIFO-PATH>` to each
+   process entry in the execution manifests; pass the FIFO path as a process argument. Also add
+   `ExecutionClient::ReportExecutionState(kRunning)` call from each child main per SWS_EM §5.
 
-2. Dangling processes on re-run (demo stuck/crashed on second launch after SSH reconnect).
-   Now that EM calls TerminateAll() on shutdown, this should be resolved. Needs re-testing.
-   Remaining risk: TCP TIME_WAIT on RPC ports if shutdown completes before OS releases sockets.
+2. Dangling processes on re-run if EM is killed before completing TerminateAll().
+   The test_watchdog_event.sh cleanup() now pkills known child binaries. The same should be
+   done in run_demo.sh for robustness.
 
-3. Termination log messages still not visible: `sed` (the log prefixer in run_demo.sh) dies
-   simultaneously with all other processes on SIGTERM, so the pipe tears down before children
-   can flush their "terminated" log lines. Low priority — functional correctness is confirmed
-   by test_watchdog_event.sh.
+3. Termination log messages still not visible via run_demo.sh (sed pipe teardown race on Ctrl+C).
+   Low priority — functional correctness is confirmed by test_watchdog_event.sh.

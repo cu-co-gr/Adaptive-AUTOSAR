@@ -151,6 +151,9 @@ set(source_application_helper_dir
 set(source_application_platform_dir
   "${CMAKE_SOURCE_DIR}/src/application/platform")
 
+set(source_sregen_vehicle_status_dir
+  "${CMAKE_SOURCE_DIR}/src-gen/vehicle_status")
+
 # Test Directories:
 
 set(test_arxml_dir
@@ -213,6 +216,9 @@ set(test_ara_phm_dir
 set(test_ara_phm_supervisors_dir
   "${CMAKE_SOURCE_DIR}/test/ara/phm/supervisors")
 
+set(test_ara_com_vehicle_status_dir
+  "${CMAKE_SOURCE_DIR}/test/ara/com/vehicle_status")
+
 ########################################################################
 
 add_library(
@@ -258,6 +264,8 @@ add_library(
 
 add_library(
   ara_com
+  ${CMAKE_SOURCE_DIR}/src/ara/com/service_skeleton.h
+  ${CMAKE_SOURCE_DIR}/src/ara/com/service_proxy.h
   ${source_ara_com_cg_dir}/communication_group_client.h
   ${source_ara_com_cg_dir}/communication_group_server.h
   ${source_ara_com_e2e_dir}/profile11.h
@@ -344,6 +352,27 @@ add_library(
   ${source_ara_com_someip_sd_fsm_dir}/service_ready_state.cpp
   ${source_ara_com_someip_sd_fsm_dir}/service_seen_state.h
   ${source_ara_com_someip_sd_fsm_dir}/service_seen_state.cpp
+)
+
+add_library(
+  vehicle_status_gen
+  ${source_sregen_vehicle_status_dir}/vehicle_status_data.h
+  ${source_sregen_vehicle_status_dir}/vehicle_status_data.cpp
+  ${source_sregen_vehicle_status_dir}/vehicle_status_skeleton.h
+  ${source_sregen_vehicle_status_dir}/vehicle_status_skeleton.cpp
+  ${source_sregen_vehicle_status_dir}/vehicle_status_proxy.h
+  ${source_sregen_vehicle_status_dir}/vehicle_status_proxy.cpp
+)
+
+target_include_directories(
+  vehicle_status_gen
+  PUBLIC ${CMAKE_SOURCE_DIR}/src
+)
+
+target_link_libraries(
+  vehicle_status_gen
+  arxml
+  ara_com
 )
 
 add_library(
@@ -584,6 +613,7 @@ target_link_libraries(
   ara_log
   ara_diag
   ara_phm
+  vehicle_status_gen
 )
 
 add_executable(
@@ -640,6 +670,7 @@ target_link_libraries(
   arxml
   ara_exec
   ara_log
+  vehicle_status_gen
 )
 
 add_executable(
@@ -752,6 +783,7 @@ if(build_tests)
     ${test_ara_phm_supervisors_dir}/alive_supervision_test.cpp
     ${test_ara_phm_supervisors_dir}/deadline_supervision_test.cpp
     ${test_ara_phm_supervisors_dir}/global_supervision_test.cpp
+    ${test_ara_com_vehicle_status_dir}/vehicle_status_data_test.cpp
   )
 
   target_link_libraries(
@@ -769,6 +801,7 @@ if(build_tests)
     ara_sm
     ara_phm
     ara_diag
+    vehicle_status_gen
   )
 
   include(GoogleTest)

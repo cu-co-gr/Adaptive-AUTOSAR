@@ -1,141 +1,33 @@
-#include <stdexcept>
-#include <vector>
+#include <functional>
 #include "../ara/log/log_stream.h"
-#include "../arxml/arxml_reader.h"
 #include "./helper/argument_configuration.h"
+#include "../../src-gen/vehicle_status/vehicle_status_proxy.h"
+#include "../../src-gen/vehicle_status/vehicle_status_data.h"
 #include "./watchdog_application.h"
 
 namespace application
 {
     const std::string WatchdogApplication::cAppId{"WatchdogApplication"};
-    const std::string WatchdogApplication::cNicIp{"127.0.0.1"};
     const std::chrono::milliseconds WatchdogApplication::cEventTimeout{2000};
 
     WatchdogApplication::WatchdogApplication(
-        AsyncBsdSocketLib::Poller *poller) : ModelledProcess(cAppId, poller)
+        AsyncBsdSocketLib::Poller *poller)
+        : ModelledProcess(cAppId, poller)
     {
-    }
-
-    void WatchdogApplication::configureFromManifest(
-        const arxml::ArxmlReader &reader)
-    {
-        const arxml::ArxmlNode cServiceIdNode{
-            reader.GetRootNode({"AUTOSAR",
-                                "AR-PACKAGES",
-                                "AR-PACKAGE",
-                                "ELEMENTS",
-                                "REQUIRED-SOMEIP-SERVICE-INSTANCE",
-                                "SERVICE-INTERFACE-DEPLOYMENT",
-                                "SERVICE-INTERFACE-ID"})};
-
-        const arxml::ArxmlNode cInstanceIdNode{
-            reader.GetRootNode({"AUTOSAR",
-                                "AR-PACKAGES",
-                                "AR-PACKAGE",
-                                "ELEMENTS",
-                                "REQUIRED-SOMEIP-SERVICE-INSTANCE",
-                                "SERVICE-INSTANCE-ID"})};
-
-        const arxml::ArxmlNode cMajorVersionNode{
-            reader.GetRootNode({"AUTOSAR",
-                                "AR-PACKAGES",
-                                "AR-PACKAGE",
-                                "ELEMENTS",
-                                "REQUIRED-SOMEIP-SERVICE-INSTANCE",
-                                "SERVICE-INTERFACE-DEPLOYMENT",
-                                "SERVICE-INTERFACE-VERSION",
-                                "MAJOR-VERSION"})};
-
-        const arxml::ArxmlNode cEventGroupIdNode{
-            reader.GetRootNode({"AUTOSAR",
-                                "AR-PACKAGES",
-                                "AR-PACKAGE",
-                                "ELEMENTS",
-                                "REQUIRED-SOMEIP-SERVICE-INSTANCE",
-                                "REQUIRED-EVENT-GROUPS",
-                                "SOMEIP-REQUIRED-EVENT-GROUP",
-                                "EVENT-GROUP-ID"})};
-
-        const arxml::ArxmlNode cMulticastIpNode{
-            reader.GetRootNode({"AUTOSAR",
-                                "AR-PACKAGES",
-                                "AR-PACKAGE",
-                                "ELEMENTS",
-                                "REQUIRED-SOMEIP-SERVICE-INSTANCE",
-                                "REQUIRED-EVENT-GROUPS",
-                                "SOMEIP-REQUIRED-EVENT-GROUP",
-                                "IPV-4-MULTICAST-IP-ADDRESS"})};
-
-        const arxml::ArxmlNode cMulticastPortNode{
-            reader.GetRootNode({"AUTOSAR",
-                                "AR-PACKAGES",
-                                "AR-PACKAGE",
-                                "ELEMENTS",
-                                "REQUIRED-SOMEIP-SERVICE-INSTANCE",
-                                "REQUIRED-EVENT-GROUPS",
-                                "SOMEIP-REQUIRED-EVENT-GROUP",
-                                "EVENT-MULTICAST-UDP-PORT"})};
-
-        const arxml::ArxmlNode cSelfInstanceIdNode{
-            reader.GetRootNode({"AUTOSAR",
-                                "AR-PACKAGES",
-                                "AR-PACKAGE",
-                                "ELEMENTS",
-                                "REQUIRED-SOMEIP-SERVICE-INSTANCE",
-                                "WATCHDOG-INSTANCE-ID"})};
-
-        const auto cServiceId{cServiceIdNode.GetValue<uint16_t>()};
-        const auto cInstanceId{cInstanceIdNode.GetValue<uint16_t>()};
-        const auto cMajorVersion{cMajorVersionNode.GetValue<uint8_t>()};
-        const auto cEventGroupId{cEventGroupIdNode.GetValue<uint16_t>()};
-        const auto cMulticastIp{cMulticastIpNode.GetValue<std::string>()};
-        const auto cMulticastPort{cMulticastPortNode.GetValue<uint16_t>()};
-        mSelfInstanceId = cSelfInstanceIdNode.GetValue<uint16_t>();
-        mPeerInstanceId = cInstanceId;
-
-        mSdNetworkLayer =
-            new ara::com::someip::sd::SdNetworkLayer(
-                Poller, cNicIp, cMulticastIp, cMulticastPort);
-
-        mSdClient =
-            new ara::com::someip::pubsub::SomeIpPubSubClient(
-                mSdNetworkLayer, 1);
-
-        auto _callback{
-            std::bind(&WatchdogApplication::onEventReceived, this,
-                      std::placeholders::_1)};
-        mEventReceiver =
-            new ara::com::someip::pubsub::PubSubEventReceiver(
-                Poller, cNicIp, cMulticastIp, cMulticastPort,
-                std::move(_callback));
-
-        mSdClient->Subscribe(cServiceId, cInstanceId, cMajorVersion, cEventGroupId);
     }
 
     void WatchdogApplication::onEventReceived(
-        const std::vector<uint8_t> &payload)
+        const vehicle_status::VehicleStatusData &data)
     {
-        if (payload.empty())
-        {
-            return;
-        }
-
-        uint16_t _senderId{payload.back()};
-
-        // Only accept events from the monitored peer; ignore own loopback events.
-        if (_senderId != mPeerInstanceId)
-        {
-            return;
-        }
-
         mLastEventTime = std::chrono::steady_clock::now();
         mExpiredLogged = false;
+        mFirstEventReceived = true;
 
         ara::log::LogStream _stream;
         _stream << "[Watchdog] "
                 << static_cast<uint32_t>(mSelfInstanceId)
                 << " restarted by ExtendedVehicle "
-                << static_cast<uint32_t>(_senderId);
+                << static_cast<uint32_t>(data.SenderInstanceId);
         Log(cLogLevel, _stream);
     }
 
@@ -147,8 +39,12 @@ namespace application
             arguments.at(
                 helper::ArgumentConfiguration::cWatchdogConfigArgument)};
 
-        arxml::ArxmlReader _reader(_manifestPath);
-        configureFromManifest(_reader);
+        mProxy = new vehicle_status::VehicleStatusProxy(Poller, _manifestPath);
+        mSelfInstanceId = mProxy->GetSelfInstanceId();
+
+        mProxy->events_VehicleStatus_SetReceiveHandler(
+            std::bind(&WatchdogApplication::onEventReceived, this,
+                      std::placeholders::_1));
 
         mLastEventTime = std::chrono::steady_clock::now();
 
@@ -167,7 +63,7 @@ namespace application
                 std::chrono::duration_cast<std::chrono::milliseconds>(
                     _now - mLastEventTime)};
 
-            if (_elapsed > cEventTimeout && !mExpiredLogged)
+            if (_elapsed > cEventTimeout && !mExpiredLogged && mFirstEventReceived)
             {
                 ara::log::LogStream _warnStream;
                 _warnStream << "[Watchdog] Event expired: no VehicleStatus"
@@ -179,22 +75,14 @@ namespace application
             }
         }
 
-        delete mSdClient;
-        mSdClient = nullptr;
-
-        delete mEventReceiver;
-        mEventReceiver = nullptr;
-
-        delete mSdNetworkLayer;
-        mSdNetworkLayer = nullptr;
+        delete mProxy;
+        mProxy = nullptr;
 
         return cSuccessfulExitCode;
     }
 
     WatchdogApplication::~WatchdogApplication()
     {
-        delete mSdClient;
-        delete mEventReceiver;
-        delete mSdNetworkLayer;
+        delete mProxy;
     }
 }

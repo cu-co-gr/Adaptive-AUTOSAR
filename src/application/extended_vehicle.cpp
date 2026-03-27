@@ -1,6 +1,7 @@
-#include "../ara/com/someip/sd/sd_network_layer.h"
 #include "../ara/diag/conversation.h"
 #include "../application/helper/argument_configuration.h"
+#include "../../src-gen/vehicle_status/vehicle_status_skeleton.h"
+#include "../../src-gen/vehicle_status/vehicle_status_data.h"
 #include "./extended_vehicle.h"
 
 namespace application
@@ -10,45 +11,13 @@ namespace application
 
     ExtendedVehicle::ExtendedVehicle(
         AsyncBsdSocketLib::Poller *poller,
-        ara::phm::CheckpointCommunicator *checkpointCommunicator) : ara::exec::helper::ModelledProcess(cAppId, poller),
-                                                                    mSupervisedEntity{cSeInstance, checkpointCommunicator},
-                                                                    mNetworkLayer{nullptr},
-                                                                    mSdServer{nullptr},
-                                                                    mPubSubServer{nullptr},
-                                                                    mEventLayer{nullptr},
-                                                                    mCurl{nullptr}
+        ara::phm::CheckpointCommunicator *checkpointCommunicator)
+        : ara::exec::helper::ModelledProcess(cAppId, poller),
+          mSupervisedEntity{cSeInstance, checkpointCommunicator},
+          mSkeleton{nullptr},
+          mCurl{nullptr},
+          mDoipServer{nullptr}
     {
-    }
-
-    void ExtendedVehicle::configureNetworkLayer(const arxml::ArxmlReader &reader)
-    {
-        const std::string cNicIpAddress{"127.0.0.1"};
-
-        const arxml::ArxmlNode cSdPortNode{
-            reader.GetRootNode({"AUTOSAR",
-                                "AR-PACKAGES",
-                                "AR-PACKAGE",
-                                "ELEMENTS",
-                                "PROVIDED-SOMEIP-SERVICE-INSTANCE",
-                                "PROVIDED-EVENT-GROUPS",
-                                "SOMEIP-PROVIDED-EVENT-GROUP",
-                                "EVENT-MULTICAST-UDP-PORT"})};
-
-        const arxml::ArxmlNode cSdIpNode{
-            reader.GetRootNode({"AUTOSAR",
-                                "AR-PACKAGES",
-                                "AR-PACKAGE",
-                                "ELEMENTS",
-                                "PROVIDED-SOMEIP-SERVICE-INSTANCE",
-                                "PROVIDED-EVENT-GROUPS",
-                                "SOMEIP-PROVIDED-EVENT-GROUP",
-                                "IPV-4-MULTICAST-IP-ADDRESS"})};
-
-        const auto cSdPort{cSdPortNode.GetValue<uint16_t>()};
-        const auto cSdIp{cSdIpNode.GetValue<std::string>()};
-        mNetworkLayer =
-            new ara::com::someip::sd::SdNetworkLayer(
-                Poller, cNicIpAddress, cSdIp, cSdPort);
     }
 
     helper::NetworkConfiguration ExtendedVehicle::getNetworkConfiguration(
@@ -73,209 +42,6 @@ namespace application
         {
             throw std::runtime_error("Fetching network configuration failed.");
         }
-    }
-
-    void ExtendedVehicle::configureSdServer(const arxml::ArxmlReader &reader)
-    {
-        const arxml::ArxmlNode cServiceIdNode{
-            reader.GetRootNode({"AUTOSAR",
-                                "AR-PACKAGES",
-                                "AR-PACKAGE",
-                                "ELEMENTS",
-                                "PROVIDED-SOMEIP-SERVICE-INSTANCE",
-                                "SERVICE-INTERFACE-DEPLOYMENT",
-                                "SERVICE-INTERFACE-ID"})};
-
-        const arxml::ArxmlNode cInstanceIdNode{
-            reader.GetRootNode({"AUTOSAR",
-                                "AR-PACKAGES",
-                                "AR-PACKAGE",
-                                "ELEMENTS",
-                                "PROVIDED-SOMEIP-SERVICE-INSTANCE",
-                                "SERVICE-INSTANCE-ID"})};
-
-        const arxml::ArxmlNode cMajorVersionNode{
-            reader.GetRootNode({"AUTOSAR",
-                                "AR-PACKAGES",
-                                "AR-PACKAGE",
-                                "ELEMENTS",
-                                "PROVIDED-SOMEIP-SERVICE-INSTANCE",
-                                "SERVICE-INTERFACE-DEPLOYMENT",
-                                "SERVICE-INTERFACE-VERSION",
-                                "MAJOR-VERSION"})};
-
-        const arxml::ArxmlNode cMinorVersionNode{
-            reader.GetRootNode({"AUTOSAR",
-                                "AR-PACKAGES",
-                                "AR-PACKAGE",
-                                "ELEMENTS",
-                                "PROVIDED-SOMEIP-SERVICE-INSTANCE",
-                                "SERVICE-INTERFACE-DEPLOYMENT",
-                                "SERVICE-INTERFACE-VERSION",
-                                "MINOR-VERSION"})};
-
-        const arxml::ArxmlNode cInitialDelayMinNode{
-            reader.GetRootNode({"AUTOSAR",
-                                "AR-PACKAGES",
-                                "AR-PACKAGE",
-                                "ELEMENTS",
-                                "PROVIDED-SOMEIP-SERVICE-INSTANCE",
-                                "SD-SERVER-CONFIG",
-                                "INITIAL-OFFER-BEHAVIOR",
-                                "INITIAL-DELAY-MIN-VALUE"})};
-
-        const arxml::ArxmlNode cInitialDelayMaxNode{
-            reader.GetRootNode({"AUTOSAR",
-                                "AR-PACKAGES",
-                                "AR-PACKAGE",
-                                "ELEMENTS",
-                                "PROVIDED-SOMEIP-SERVICE-INSTANCE",
-                                "SD-SERVER-CONFIG",
-                                "INITIAL-OFFER-BEHAVIOR",
-                                "INITIAL-DELAY-MAX-VALUE"})};
-
-        const auto cServiceId{cServiceIdNode.GetValue<uint16_t>()};
-        const auto cInstanceId{cInstanceIdNode.GetValue<uint16_t>()};
-        const auto cMajorVersion{cMajorVersionNode.GetValue<uint8_t>()};
-        const auto cMinorVersion{cMinorVersionNode.GetValue<uint32_t>()};
-        const auto cInitialDelayMin{cInitialDelayMinNode.GetValue<int>()};
-        const auto cInitialDelayMax{cInitialDelayMaxNode.GetValue<int>()};
-
-        helper::NetworkConfiguration _networkConfiguration{
-            getNetworkConfiguration(reader)};
-
-        mSdServer =
-            new ara::com::someip::sd::SomeIpSdServer(
-                mNetworkLayer,
-                cServiceId,
-                cInstanceId,
-                cMajorVersion,
-                cMinorVersion,
-                _networkConfiguration.ipAddress,
-                _networkConfiguration.portNumber,
-                cInitialDelayMin,
-                cInitialDelayMax);
-
-        ara::log::LogStream _sdLogStream;
-        _sdLogStream << "[SD-Server] Configured: service "
-                     << static_cast<uint32_t>(cServiceId) << ":"
-                     << static_cast<uint32_t>(cInstanceId)
-                     << " v" << static_cast<uint32_t>(cMajorVersion) << "." << cMinorVersion
-                     << " endpoint " << _networkConfiguration.ipAddress
-                     << ":" << static_cast<uint32_t>(_networkConfiguration.portNumber);
-        Log(cLogLevel, _sdLogStream);
-    }
-
-    void ExtendedVehicle::configurePubSubServer(const arxml::ArxmlReader &reader)
-    {
-        const std::string cNicIpAddress{"127.0.0.1"};
-
-        const arxml::ArxmlNode cEventGroupIdNode{
-            reader.GetRootNode({"AUTOSAR",
-                                "AR-PACKAGES",
-                                "AR-PACKAGE",
-                                "ELEMENTS",
-                                "PROVIDED-SOMEIP-SERVICE-INSTANCE",
-                                "PROVIDED-EVENT-GROUPS",
-                                "SOMEIP-PROVIDED-EVENT-GROUP",
-                                "EVENT-GROUP-ID"})};
-
-        const arxml::ArxmlNode cServiceIdNode{
-            reader.GetRootNode({"AUTOSAR",
-                                "AR-PACKAGES",
-                                "AR-PACKAGE",
-                                "ELEMENTS",
-                                "PROVIDED-SOMEIP-SERVICE-INSTANCE",
-                                "SERVICE-INTERFACE-DEPLOYMENT",
-                                "SERVICE-INTERFACE-ID"})};
-
-        const arxml::ArxmlNode cInstanceIdNode{
-            reader.GetRootNode({"AUTOSAR",
-                                "AR-PACKAGES",
-                                "AR-PACKAGE",
-                                "ELEMENTS",
-                                "PROVIDED-SOMEIP-SERVICE-INSTANCE",
-                                "SERVICE-INSTANCE-ID"})};
-
-        const arxml::ArxmlNode cMajorVersionNode{
-            reader.GetRootNode({"AUTOSAR",
-                                "AR-PACKAGES",
-                                "AR-PACKAGE",
-                                "ELEMENTS",
-                                "PROVIDED-SOMEIP-SERVICE-INSTANCE",
-                                "SERVICE-INTERFACE-DEPLOYMENT",
-                                "SERVICE-INTERFACE-VERSION",
-                                "MAJOR-VERSION"})};
-
-        const arxml::ArxmlNode cMulticastIpNode{
-            reader.GetRootNode({"AUTOSAR",
-                                "AR-PACKAGES",
-                                "AR-PACKAGE",
-                                "ELEMENTS",
-                                "PROVIDED-SOMEIP-SERVICE-INSTANCE",
-                                "PROVIDED-EVENT-GROUPS",
-                                "SOMEIP-PROVIDED-EVENT-GROUP",
-                                "IPV-4-MULTICAST-IP-ADDRESS"})};
-
-        const arxml::ArxmlNode cMulticastPortNode{
-            reader.GetRootNode({"AUTOSAR",
-                                "AR-PACKAGES",
-                                "AR-PACKAGE",
-                                "ELEMENTS",
-                                "PROVIDED-SOMEIP-SERVICE-INSTANCE",
-                                "PROVIDED-EVENT-GROUPS",
-                                "SOMEIP-PROVIDED-EVENT-GROUP",
-                                "EVENT-MULTICAST-UDP-PORT"})};
-
-        const auto cEventGroupId{cEventGroupIdNode.GetValue<uint16_t>()};
-        const auto cServiceId{cServiceIdNode.GetValue<uint16_t>()};
-        const auto cInstanceId{cInstanceIdNode.GetValue<uint16_t>()};
-        mPublisherInstanceId = cInstanceId;
-        const auto cMajorVersion{cMajorVersionNode.GetValue<uint8_t>()};
-        const auto cMulticastIp{cMulticastIpNode.GetValue<std::string>()};
-        const auto cMulticastPort{cMulticastPortNode.GetValue<uint16_t>()};
-
-        mPubSubServer =
-            new ara::com::someip::pubsub::SomeIpPubSubServer(
-                mNetworkLayer,
-                cServiceId,
-                cInstanceId,
-                cMajorVersion,
-                cEventGroupId,
-                cMulticastIp,
-                cMulticastPort);
-
-        mEventLayer =
-            new ara::com::someip::pubsub::PubSubEventNetworkLayer(
-                Poller, cNicIpAddress, cMulticastIp, cMulticastPort);
-
-        mPubSubServer->SetEventLayer(mEventLayer);
-    }
-
-    void ExtendedVehicle::publishVehicleStatus(
-        const std::string &vin, bool connectedToCloud)
-    {
-        if (!mPubSubServer)
-        {
-            return;
-        }
-
-        // Serialize VehicleStatusType: VIN (17 bytes) + ConnectedToCloud (1 byte)
-        const size_t cVinLength{17};
-        std::vector<uint8_t> _payload;
-        _payload.reserve(cVinLength + 1);
-
-        for (size_t i = 0; i < cVinLength; ++i)
-        {
-            _payload.push_back(
-                i < vin.size() ? static_cast<uint8_t>(vin[i]) : 0);
-        }
-        _payload.push_back(connectedToCloud ? 1 : 0);
-        _payload.push_back(static_cast<uint8_t>(mPublisherInstanceId));
-
-        // Event ID for TelematicControlModuleEvent per service interface ARXML
-        const uint16_t cTelematicEventId{0x8001};
-        mPubSubServer->Publish(cTelematicEventId, _payload);
     }
 
     bool ExtendedVehicle::tryConfigureRestCommunication(
@@ -410,9 +176,8 @@ namespace application
         {
             bool _running{true};
 
-            configureNetworkLayer(cReader);
-            configureSdServer(cReader);
-            configurePubSubServer(cReader);
+            mSkeleton = new vehicle_status::VehicleStatusSkeleton(
+                Poller, cEvConfigFilepath);
 
             _logStream << "Extended Vehicle AA has been initialized.";
             Log(cLogLevel, _logStream);
@@ -426,13 +191,7 @@ namespace application
             if (cConfigured)
             {
                 configureDoipServer(cReader, std::move(_vin));
-                mPubSubServer->Start();
-                mSdServer->Start();
-
-                ara::log::LogStream _startLogStream;
-                _startLogStream << "[SD-Server] Service discovery started"
-                                << " — advertising on multicast 239.0.0.1:5555";
-                Log(cLogLevel, _startLogStream);
+                mSkeleton->OfferService();
             }
 
             uint32_t _heartbeatCounter{0};
@@ -460,7 +219,10 @@ namespace application
                               << (cConfigured ? "active" : "inactive");
                     Log(cLogLevel, _hbStream);
 
-                    publishVehicleStatus(_vin, cConfigured);
+                    vehicle_status::VehicleStatusData _data;
+                    _data.Vin = _vin;
+                    _data.ConnectedToCloud = cConfigured;
+                    mSkeleton->events_VehicleStatus_Send(_data);
                 }
             }
 
@@ -476,10 +238,8 @@ namespace application
 
             Log(cLogLevel, _logStream);
 
-            if (mPubSubServer)
-                mPubSubServer->Stop();
-            delete mSdServer;
-            mSdServer = nullptr;
+            if (mSkeleton)
+                mSkeleton->StopOfferService();
 
             _logStream.Flush();
             _logStream << "Extended Vehicle AA has been terminated.";
@@ -505,16 +265,7 @@ namespace application
         if (mCurl)
             delete mCurl;
 
-        if (mEventLayer)
-            delete mEventLayer;
-
-        if (mPubSubServer)
-            delete mPubSubServer;
-
-        if (mSdServer)
-            delete mSdServer;
-
-        if (mNetworkLayer)
-            delete mNetworkLayer;
+        if (mSkeleton)
+            delete mSkeleton;
     }
 }
