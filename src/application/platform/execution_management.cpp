@@ -151,6 +151,10 @@ namespace application
                         .GetValue<std::string>()};
                 _descriptor.isBootstrap = (cBootstrapStr == "true");
 
+                _descriptor.fifoPath =
+                    cProcessReader.GetRootNode({"PROCESS", "FIFO-PATH"})
+                        .GetValue<std::string>();
+
                 const arxml::ArxmlNodeRange cArgNodes{
                     cProcessReader.GetNodes(
                         {"PROCESS", "PROCESS-ARGUMENTS"})};
@@ -214,6 +218,8 @@ namespace application
                         _argv.end(),
                         _desc.arguments.begin(),
                         _desc.arguments.end());
+                    if (!_desc.fifoPath.empty())
+                        _argv.push_back(_desc.fifoPath);
                     mProcessManager.Spawn(_desc.executablePath, _argv);
                 }
             }
@@ -264,6 +270,8 @@ namespace application
                             _argv.end(),
                             _desc.arguments.begin(),
                             _desc.arguments.end());
+                        if (!_desc.fifoPath.empty())
+                            _argv.push_back(_desc.fifoPath);
                         mProcessManager.Spawn(_desc.executablePath, _argv);
                     }
                 }

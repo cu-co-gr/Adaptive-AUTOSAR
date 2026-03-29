@@ -64,6 +64,7 @@
                         <SHORT-NAME>PlatformHealthManagement</SHORT-NAME>
                         <EXECUTABLE-PATH>./build/bin/platform_health_management</EXECUTABLE-PATH>
                         <BOOTSTRAP>false</BOOTSTRAP>
+                        <FIFO-PATH>/tmp/fifo_18080</FIFO-PATH>
                         <PROCESS-ARGUMENTS>
                             <PROCESS-ARGUMENT>./configuration/machine_a/execution_manifest.arxml</PROCESS-ARGUMENT>
                             <PROCESS-ARGUMENT>./configuration/machine_a/health_monitoring_manifest.arxml</PROCESS-ARGUMENT>
@@ -79,6 +80,7 @@
                         <SHORT-NAME>ExtendedVehicle</SHORT-NAME>
                         <EXECUTABLE-PATH>./build/bin/extended_vehicle</EXECUTABLE-PATH>
                         <BOOTSTRAP>false</BOOTSTRAP>
+                        <FIFO-PATH>/tmp/fifo_18080</FIFO-PATH>
                         <PROCESS-ARGUMENTS>
                             <PROCESS-ARGUMENT>./configuration/machine_a/execution_manifest.arxml</PROCESS-ARGUMENT>
                             <PROCESS-ARGUMENT>./configuration/machine_a/extended_vehicle_manifest.arxml</PROCESS-ARGUMENT>

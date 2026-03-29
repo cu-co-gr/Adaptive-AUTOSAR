@@ -22,6 +22,11 @@ cleanup() {
     echo "Stopping both machines..."
     kill %1 %2 2>/dev/null
     wait
+    pkill -f "build/bin/state_management" 2>/dev/null || true
+    pkill -f "build/bin/platform_health_management" 2>/dev/null || true
+    pkill -f "build/bin/extended_vehicle" 2>/dev/null || true
+    pkill -f "build/bin/diagnostic_manager" 2>/dev/null || true
+    pkill -f "build/bin/watchdog_application" 2>/dev/null || true
     echo "Done."
 }
 trap cleanup INT TERM

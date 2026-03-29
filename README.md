@@ -1,6 +1,13 @@
 # Adaptive-AUTOSAR
-![example workflow](https://github.com/langroodi/Adaptive-AUTOSAR/actions/workflows/cmake.yml/badge.svg)
+![example workflow](https://github.com/cu-co-gr/Adaptive-AUTOSAR/actions/workflows/cmake.yml/badge.svg)
 
+This project is a playground for Adaptive Autosar Methodology use cases. 
+
+
+System Perspective: MACHINE A -> SOME/IP -> MACHINE B  
+Machine Persepctive: Two or more Adaptive Applications deployed. 
+Adaptive Platform Persepctive:  Align ara API. 
+The Adaptive Platfrom and Adaptive Applications are conceived to create a simple system 
 Adaptive AUTOSAR is a simulated _Adaptive Platform_ environment over Linux defined by [AUTOSAR](https://www.autosar.org/standards/adaptive-platform/). The goal of this project is to implement the interfaces defined by the standard for educational purposes. For more information, please refer to [the project Wiki](https://github.com/langroodi/Adaptive-AUTOSAR/wiki).
 
 ![Simulation flow diagram](https://github.com/langroodi/Adaptive-AUTOSAR/blob/master/doc/simulation_flow_diagram.png)

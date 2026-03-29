@@ -17,7 +17,25 @@ EM now has a SIGTERM/SIGINT handler so that Ctrl+C triggers a clean shutdown seq
 signal → gRunning=false → Terminate() → ProcessManager::TerminateAll() → SIGTERM to children
 (2s grace) → SIGKILL backstop. Each child runs its own Terminate() within the grace window.
 
-**Stage 6 (current):** ara::com Proxy/Skeleton layer introduced per SWS_CM §8.2–8.4.
+**Stage 7 (current):** ExecutionClient decoupling + run_demo.sh robustness.
+
+- `<FIFO-PATH>` added to PlatformHealthManagement and ExtendedVehicle process entries in
+  `configuration/machine_a/execution_manifest.arxml`. EM parses it in `parseProcessDescriptors()`
+  (new `fifoPath` field on `ProcessDescriptor`) and appends it to the child's argv at spawn time.
+- `platform_health_management_main.cpp` and `extended_vehicle_main.cpp` no longer include
+  `execution_management.h`; FIFO path is read from `argv[3]` and the function group name is
+  the manifest literal `"MachineFG"`.
+- All five child-process mains now call `ExecutionClient::ReportExecutionState(kRunning)` per
+  SWS_EM §5. Each main creates a `SocketRpcClient` connecting back to EM's RPC server (host/port
+  parsed from the execution manifest via `helper::TryGetRpcConfiguration()`). The call runs in a
+  `std::async` thread so the main-thread poller loop can service the send/receive callbacks.
+  `CMakeLists.txt`: added `network_configuration` and `rpc_configuration` sources to the
+  `watchdog_application` target to satisfy the new link dependency.
+- `run_demo.sh` cleanup() now pkills known child binaries after `wait`, matching what
+  `test_watchdog_event.sh` already did.
+- All 21 functional checks pass; 475/479 unit tests pass (4 pre-existing env failures).
+
+**Stage 6:** ara::com Proxy/Skeleton layer introduced per SWS_CM §8.2–8.4.
 Applications no longer interact with SOME/IP directly.
 
 - `src/ara/com/service_skeleton.h` and `service_proxy.h`: framework base classes.
@@ -35,15 +53,5 @@ Applications no longer interact with SOME/IP directly.
 
 ## TODOS
 
-1. Stage 7 (deferred): ExecutionClient decoupling.
-   Child process mains call `ExecutionManagement::getRpcConfiguration()` to derive the PHM FIFO
-   path. This couples non-EM processes to an EM class header. Fix: add `<FIFO-PATH>` to each
-   process entry in the execution manifests; pass the FIFO path as a process argument. Also add
-   `ExecutionClient::ReportExecutionState(kRunning)` call from each child main per SWS_EM §5.
-
-2. Dangling processes on re-run if EM is killed before completing TerminateAll().
-   The test_watchdog_event.sh cleanup() now pkills known child binaries. The same should be
-   done in run_demo.sh for robustness.
-
-3. Termination log messages still not visible via run_demo.sh (sed pipe teardown race on Ctrl+C).
+1. Termination log messages still not visible via run_demo.sh (sed pipe teardown race on Ctrl+C).
    Low priority — functional correctness is confirmed by test_watchdog_event.sh.

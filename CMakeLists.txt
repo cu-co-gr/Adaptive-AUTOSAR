@@ -663,6 +663,10 @@ add_executable(
   ${source_application_dir}/watchdog_application.cpp
   ${source_application_helper_dir}/argument_configuration.h
   ${source_application_helper_dir}/argument_configuration.cpp
+  ${source_application_helper_dir}/network_configuration.h
+  ${source_application_helper_dir}/network_configuration.cpp
+  ${source_application_helper_dir}/rpc_configuration.h
+  ${source_application_helper_dir}/rpc_configuration.cpp
 )
 
 target_link_libraries(
