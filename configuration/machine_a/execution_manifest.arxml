@@ -107,6 +107,21 @@
                             </FUNCTION-GROUP-STATE-IREF>
                         </FUNCTION-GROUP-STATE-IREFS>
                     </PROCESS>
+                    <PROCESS>
+                        <SHORT-NAME>WatchdogApplication</SHORT-NAME>
+                        <EXECUTABLE-PATH>./build/bin/watchdog_application</EXECUTABLE-PATH>
+                        <BOOTSTRAP>false</BOOTSTRAP>
+                        <PROCESS-ARGUMENTS>
+                            <PROCESS-ARGUMENT>./configuration/machine_a/execution_manifest.arxml</PROCESS-ARGUMENT>
+                            <PROCESS-ARGUMENT>./configuration/machine_a/watchdog_manifest.arxml</PROCESS-ARGUMENT>
+                        </PROCESS-ARGUMENTS>
+                        <FUNCTION-GROUP-STATE-IREFS>
+                            <FUNCTION-GROUP-STATE-IREF>
+                                <FUNCTION-GROUP-REF>MachineFG</FUNCTION-GROUP-REF>
+                                <FUNCTION-GROUP-STATE-REF>StartUp</FUNCTION-GROUP-STATE-REF>
+                            </FUNCTION-GROUP-STATE-IREF>
+                        </FUNCTION-GROUP-STATE-IREFS>
+                    </PROCESS>
                 </PROCESSES>
             </ELEMENTS>
         </AR-PACKAGE>

@@ -55,3 +55,16 @@ Applications no longer interact with SOME/IP directly.
 
 1. Termination log messages still not visible via run_demo.sh (sed pipe teardown race on Ctrl+C).
    Low priority — functional correctness is confirmed by test_watchdog_event.sh.
+
+2. Machine A WA never subscribes to Machine B EV due to SD client FSM timing.
+   Root cause: `ClientRepetitionState` constructor sets `SdClientState::Stopped` as the
+   fallthrough state after exhausting repetitions. There is no SD Client Main phase, so a
+   late Offer from Machine B EV (which starts slightly after Machine A WA's Repetition
+   window) is never seen. Machine B WA works because Machine A EV is already offering by
+   the time Machine B WA enters its Repetition phase (Machine A starts ~100 ms earlier due
+   to lower RPC port 18080). Fix options: (a) add SD Client Main phase that reacts to late
+   Offers, or (b) increase Repetition timeout in watchdog manifest.
+
+3. Both machine_a and machine_b execution_manifest.arxml now have all five process entries
+   (SM, PHM, EV, DM, WA) — symmetric deployment confirmed. FIFO-PATH set to /tmp/fifo_18080
+   (Machine A) and /tmp/fifo_18081 (Machine B) for PHM and EV processes. WA has no FIFO-PATH.
