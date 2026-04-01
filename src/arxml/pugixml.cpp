@@ -179,6 +179,7 @@ namespace pugi
 }
 #else
 #	include <stdint.h>
+#include <cstdint>
 #endif
 
 // Memory allocation

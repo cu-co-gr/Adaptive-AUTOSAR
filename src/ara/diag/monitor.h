@@ -7,6 +7,8 @@
 #include "./debouncing/counter_based_debouncer.h"
 #include "./debouncing/timer_based_debouncer.h"
 #include "./event.h"
+#include <stdexcept>
+#include <cstdint>
 
 namespace ara
 {

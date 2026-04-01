@@ -1,6 +1,8 @@
 #include "./someip_sd_message.h"
 #include "../../entry/entry_deserializer.h"
 #include "../../option/option_deserializer.h"
+#include <stdexcept>
+#include <cstdint>
 
 namespace ara
 {

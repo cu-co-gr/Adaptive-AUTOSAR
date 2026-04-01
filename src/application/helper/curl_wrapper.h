@@ -3,6 +3,7 @@
 
 #include <curl/curl.h>
 #include <string>
+#include <stdexcept>
 
 namespace application
 {

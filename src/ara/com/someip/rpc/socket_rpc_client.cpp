@@ -1,5 +1,7 @@
 #include <algorithm>
 #include "./socket_rpc_client.h"
+#include <stdexcept>
+#include <cstdint>
 
 namespace ara
 {

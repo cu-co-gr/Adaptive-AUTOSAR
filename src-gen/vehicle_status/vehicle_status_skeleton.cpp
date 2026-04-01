@@ -6,6 +6,7 @@
 #include "ara/com/someip/sd/someip_sd_server.h"
 #include "ara/com/someip/pubsub/someip_pubsub_server.h"
 #include "ara/com/someip/pubsub/pubsub_event_network_layer.h"
+#include <cstdint>
 
 namespace application
 {

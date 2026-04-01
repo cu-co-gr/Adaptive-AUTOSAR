@@ -2,6 +2,8 @@
 #define EVENTGROUP_ENTRY_H
 
 #include "./entry.h"
+#include <stdexcept>
+#include <cstdint>
 
 namespace ara
 {

@@ -10,6 +10,7 @@
 #include "./fsm/repetition_state.h"
 #include "./fsm/main_state.h"
 #include "./someip_sd_agent.h"
+#include <cstdint>
 
 namespace ara
 {

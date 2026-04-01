@@ -1,4 +1,6 @@
 #include "./option_deserializer.h"
+#include <stdexcept>
+#include <cstdint>
 
 namespace ara
 {

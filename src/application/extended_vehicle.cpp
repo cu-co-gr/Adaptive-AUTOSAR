@@ -3,6 +3,8 @@
 #include "../../src-gen/vehicle_status/vehicle_status_skeleton.h"
 #include "../../src-gen/vehicle_status/vehicle_status_data.h"
 #include "./extended_vehicle.h"
+#include <stdexcept>
+#include <cstdint>
 
 namespace application
 {

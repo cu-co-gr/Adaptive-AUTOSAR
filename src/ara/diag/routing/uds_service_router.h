@@ -2,6 +2,7 @@
 #define UDS_SERVICE_ROUTER_H
 
 #include "./routable_uds_service.h"
+#include <cstdint>
 
 namespace ara
 {

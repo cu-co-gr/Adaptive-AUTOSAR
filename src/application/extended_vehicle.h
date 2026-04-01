@@ -6,6 +6,7 @@
 #include "./helper/network_configuration.h"
 #include "./helper/curl_wrapper.h"
 #include "./doip/doip_server.h"
+#include <cstdint>
 
 namespace application
 {

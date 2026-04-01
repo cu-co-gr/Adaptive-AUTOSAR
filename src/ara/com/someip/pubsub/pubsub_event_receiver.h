@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <asyncbsdsocket/poller.h>
 #include <asyncbsdsocket/udp_client.h>
+#include <stdexcept>
 
 namespace ara
 {

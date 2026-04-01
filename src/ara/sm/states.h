@@ -2,6 +2,7 @@
 #define STATES_H
 
 #include <stdint.h>
+#include <cstdint>
 
 namespace ara
 {

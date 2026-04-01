@@ -6,6 +6,7 @@
 #include "../../ara/exec/deterministic_client.h"
 #include "../../ara/exec/state_client.h"
 #include "../helper/rpc_configuration.h"
+#include <stdexcept>
 
 namespace application
 {

@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include "./debouncer.h"
+#include <cstdint>
 
 namespace ara
 {

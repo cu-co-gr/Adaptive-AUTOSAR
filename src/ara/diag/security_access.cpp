@@ -1,4 +1,5 @@
 #include "./security_access.h"
+#include <cstdint>
 
 namespace ara
 {

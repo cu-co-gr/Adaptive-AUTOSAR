@@ -51,10 +51,20 @@ Test files live under `test/` and mirror the `src/` directory structure.
 
 ## Running the Application
 
+Each platform service (SM, PHM, EV, DM, WA) is a separate binary spawned by Execution Management as independent OS processes. The top-level entry point is `adaptive_autosar` (EM), which reads manifests and forks children.
+
 ```bash
-./build/bin/adaptive_autosar ./configuration/execution_manifest.arxml
+# Single machine (machine_a)
+./build/bin/adaptive_autosar \
+  ./configuration/machine_a/execution_manifest.arxml \
+  ./configuration/machine_a/extended_vehicle_manifest.arxml \
+  ./configuration/machine_a/diagnostic_manager_manifest.arxml \
+  ./configuration/machine_a/health_monitoring_manifest.arxml \
+  ./configuration/machine_a/watchdog_manifest.arxml
+
+# Two-machine demo (simulates Machine A + Machine B communicating via SOME/IP)
+./run_demo.sh
 ```
-Note that run_demo launches two instances of the same application with two sets of manifests. This intents to simulate a small system with two machines deployed. 
 
 ## Architecture Overview
 
@@ -63,17 +73,19 @@ This is a C++14 educational implementation of the [AUTOSAR Adaptive Platform](ht
 ### Layer Structure
 
 ```
-application/platform/   ← Orchestrates platform services (state, exec, diag, health)
-application/doip/       ← DoIP automotive diagnostic protocol
-ara/                    ← ARA (AUTOSAR Runtime for Adaptive Applications) interfaces
-  core/                 ← Result<T>, Optional<T>, ErrorCode, ErrorDomain
-  log/                  ← Logging framework (console/file sinks)
-  com/                  ← SOME/IP middleware (RPC, Pub/Sub, Service Discovery, E2E)
-  exec/                 ← Execution management, ModelledProcess base class
-  sm/                   ← State management (function group states)
-  diag/                 ← UDS diagnostics with routing and debouncing
-  phm/                  ← Platform Health Management (supervisor watchdogs)
-arxml/                  ← ARXML manifest file parsing (pugixml-based)
+application/platform/   ← EM (main entry point) + SM, PHM, DM — each has its own *_main.cpp binary
+application/             ← ExtendedVehicle (EV) and WatchdogApplication (WA) — also separate binaries
+application/doip/        ← DoIP automotive diagnostic protocol
+ara/                     ← ARA (AUTOSAR Runtime for Adaptive Applications) interfaces
+  core/                  ← Result<T>, Optional<T>, ErrorCode, ErrorDomain
+  log/                   ← Logging framework (console/file sinks)
+  com/                   ← SOME/IP middleware (RPC, Pub/Sub, Service Discovery, E2E)
+  exec/                  ← Execution management, ModelledProcess base class
+  sm/                    ← State management (function group states)
+  diag/                  ← UDS diagnostics with routing and debouncing
+  phm/                   ← Platform Health Management (supervisor watchdogs)
+arxml/                   ← ARXML manifest file parsing (pugixml-based)
+src-gen/vehicle_status/  ← Hand-generated Proxy/Skeleton for VehicleStatus service (ara::com layer)
 ```
 
 ### Key Design Patterns
@@ -86,10 +98,12 @@ arxml/                  ← ARXML manifest file parsing (pugixml-based)
 
 ### Communication Stack (`ara/com/someip/`)
 
-- `rpc/` — RpcServer and RpcClient for request/response messaging
+- `rpc/` — RpcServer and RpcClient for request/response messaging (also used by ExecutionClient to report state back to EM)
 - `sd/` — Service Discovery with FSM-controlled server/client agents
 - `pubsub/` — Event notification; publisher and subscriber agents with FSM
 - `e2e/` — End-to-End protection (Profile11) for data integrity
+
+Applications use the `src-gen/` Proxy/Skeleton layer rather than SOME/IP directly. `VehicleStatusSkeleton` (used by EV) wraps the SD server + PubSub server; `VehicleStatusProxy` (used by WA) wraps the SD client + PubSub receiver.
 
 ### Configuration
 
@@ -173,7 +187,8 @@ cd build && ctest
   ./configuration/machine_a/execution_manifest.arxml \
   ./configuration/machine_a/extended_vehicle_manifest.arxml \
   ./configuration/machine_a/diagnostic_manager_manifest.arxml \
-  ./configuration/machine_a/health_monitoring_manifest.arxml
+  ./configuration/machine_a/health_monitoring_manifest.arxml \
+  ./configuration/machine_a/watchdog_manifest.arxml
 ```
 
 Note: 4 async BSD socket tests (`TcpCommunicationTest`, `PollerTest`) fail due to

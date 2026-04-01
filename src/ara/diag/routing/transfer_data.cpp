@@ -1,5 +1,6 @@
 #include <algorithm>
 #include "./transfer_data.h"
+#include <cstdint>
 
 namespace ara
 {

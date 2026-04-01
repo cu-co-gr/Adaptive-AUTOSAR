@@ -51,6 +51,32 @@ Applications no longer interact with SOME/IP directly.
   kill to guarantee log buffer flush.
 - All 21 functional test checks pass; 475/479 unit tests pass (4 pre-existing env failures).
 
+## aarch64 Cross-Compilation (current)
+
+Target: aarch64-linux-gnu-gcc 14.2.0 (Debian). Build dir: `build-aarch64/`.
+
+Configure command:
+```bash
+cmake -DCMAKE_BUILD_TYPE=Debug \
+  -DCMAKE_C_COMPILER=/usr/bin/aarch64-linux-gnu-gcc \
+  -DCMAKE_CXX_COMPILER=/usr/bin/aarch64-linux-gnu-g++ \
+  -DCMAKE_SYSTEM_NAME=Linux \
+  -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
+  -Dbuild_tests=OFF \
+  -S . -B build-aarch64
+```
+
+**Fixes applied (2026-04-01):**
+- GCC 14 on aarch64 is stricter about implicit transitive includes than GCC 11 on x86.
+  161 source files in `src/` and `src-gen/` had `#include <stdexcept>` and/or `#include <cstdint>`
+  added wherever `std::runtime_error`/`uint8_t` etc. were used without the explicit include.
+- The fetched `async-bsd-socket-lib` dependency (`fifo_sender.h`, `fifo_receiver.h`) also
+  needed `#include <cstdint>`. These are patched in-place in `build-aarch64/_deps/`; if the
+  build dir is wiped, re-apply these two patches or the configure step will fail to build
+  the async socket lib.
+
+All 6 application binaries build cleanly as ARM aarch64 ELF executables.
+
 ## TODOS
 
 1. Termination log messages still not visible via run_demo.sh (sed pipe teardown race on Ctrl+C).
@@ -68,3 +94,5 @@ Applications no longer interact with SOME/IP directly.
 3. Both machine_a and machine_b execution_manifest.arxml now have all five process entries
    (SM, PHM, EV, DM, WA) — symmetric deployment confirmed. FIFO-PATH set to /tmp/fifo_18080
    (Machine A) and /tmp/fifo_18081 (Machine B) for PHM and EV processes. WA has no FIFO-PATH.
+
+

@@ -1,4 +1,5 @@
 #include "./rpc_configuration.h"
+#include <cstdint>
 
 namespace application
 {

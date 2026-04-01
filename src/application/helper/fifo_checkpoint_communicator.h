@@ -7,6 +7,8 @@
 #include "../../ara/phm/checkpoint_communicator.h"
 #include "../../ara/com/helper/concurrent_queue.h"
 #include "../../ara/com/e2e/profile11.h"
+#include <stdexcept>
+#include <cstdint>
 
 namespace application
 {

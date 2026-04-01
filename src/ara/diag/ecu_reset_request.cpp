@@ -1,5 +1,6 @@
 #include <stdexcept>
 #include "./ecu_reset_request.h"
+#include <cstdint>
 
 namespace ara
 {

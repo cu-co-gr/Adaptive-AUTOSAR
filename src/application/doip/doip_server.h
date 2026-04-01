@@ -7,6 +7,8 @@
 #include "../../ara/com/helper/concurrent_queue.h"
 #include "./vehicle_id_request_handler.h"
 #include "./diag_message_handler.h"
+#include <stdexcept>
+#include <cstdint>
 
 namespace application
 {

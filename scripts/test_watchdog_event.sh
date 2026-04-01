@@ -151,16 +151,19 @@ done
 echo ""
 echo "--- Event pipeline (log-based) ---"
 
-_hb_a=$(grep -ca "\[Heartbeat\] ExtendedVehicle alive" "$LOG_A" 2>/dev/null || echo 0)
+_hb_a=$(grep -ca "\[Heartbeat\] ExtendedVehicle alive" "$LOG_A" 2>/dev/null; true)
+_hb_a=${_hb_a:-0}
 [ "$_hb_a" -ge 3 ] && _r=0 || _r=1
 check "Machine A EV: Periodic heartbeat (≥ 3 in 12 s, got $_hb_a)" $_r
 
-_hb_b=$(grep -ca "\[Heartbeat\] ExtendedVehicle alive" "$LOG_B" 2>/dev/null || echo 0)
+_hb_b=$(grep -ca "\[Heartbeat\] ExtendedVehicle alive" "$LOG_B" 2>/dev/null; true)
+_hb_b=${_hb_b:-0}
 [ "$_hb_b" -ge 3 ] && _r=0 || _r=1
 check "Machine B EV: Periodic heartbeat (≥ 3 in 12 s, got $_hb_b)" $_r
 
 # Machine B WA subscribes to Machine A EV (instance 0) — expected to work.
-_wr_b=$(grep -ca "\[Watchdog\] 1 restarted by ExtendedVehicle 0" "$LOG_B" 2>/dev/null || echo 0)
+_wr_b=$(grep -ca "\[Watchdog\] 1 restarted by ExtendedVehicle 0" "$LOG_B" 2>/dev/null; true)
+_wr_b=${_wr_b:-0}
 [ "$_wr_b" -ge 1 ] && _r=0 || _r=1
 check "Machine B WA: Watchdog reset by Machine A EV (got $_wr_b)" $_r
 
@@ -173,7 +176,8 @@ check "Machine B: No spurious watchdog expiry while both running" $_r
 # Machine A WA subscribes to Machine B EV (instance 1) — SD timing issue.
 # Expected: 0 resets because Machine A WA's SD client FSM reaches Stopped
 # before Machine B EV begins offering.  Does not affect test verdict.
-_wr_a=$(grep -ca "\[Watchdog\] 0 restarted by ExtendedVehicle 1" "$LOG_A" 2>/dev/null || echo 0)
+_wr_a=$(grep -ca "\[Watchdog\] 0 restarted by ExtendedVehicle 1" "$LOG_A" 2>/dev/null; true)
+_wr_a=${_wr_a:-0}
 info "Machine A WA: Watchdog resets from Machine B EV: $_wr_a [INFO — expected 0; see SD timing note]"
 
 # ── 6. Kill Machine A — let Machine B WA timeout ──────────────────────────────

@@ -1,4 +1,5 @@
 #include "./download.h"
+#include <cstdint>
 
 namespace ara
 {

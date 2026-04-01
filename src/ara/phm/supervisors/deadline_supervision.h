@@ -6,6 +6,7 @@
 #include <mutex>
 #include <thread>
 #include "./elementary_supervision.h"
+#include <stdexcept>
 
 namespace ara
 {

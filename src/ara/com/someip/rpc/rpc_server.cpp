@@ -1,5 +1,7 @@
 #include <utility>
 #include "./rpc_server.h"
+#include <stdexcept>
+#include <cstdint>
 
 namespace ara
 {

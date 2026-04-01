@@ -3,6 +3,8 @@
 
 #include <obdemulator/obd_service.h>
 #include "./doip_client.h"
+#include <stdexcept>
+#include <cstdint>
 
 namespace application
 {

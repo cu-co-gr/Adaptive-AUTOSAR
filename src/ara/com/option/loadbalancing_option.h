@@ -3,6 +3,7 @@
 
 #include <memory>
 #include "./option.h"
+#include <cstdint>
 
 namespace ara
 {

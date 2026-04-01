@@ -6,6 +6,8 @@
 #include "../../helper/concurrent_queue.h"
 #include "../../helper/network_layer.h"
 #include "./someip_sd_message.h"
+#include <stdexcept>
+#include <cstdint>
 
 namespace ara
 {

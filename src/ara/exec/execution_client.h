@@ -6,6 +6,8 @@
 #include "../core/result.h"
 #include "../com/someip/rpc/rpc_client.h"
 #include "./exec_exception.h"
+#include <stdexcept>
+#include <cstdint>
 
 namespace ara
 {

@@ -2,6 +2,7 @@
 #include <array>
 #include <vector>
 #include "./pubsub_event_receiver.h"
+#include <cstdint>
 
 namespace ara
 {

@@ -1,6 +1,7 @@
 #include <sstream>
 #include <iomanip>
 #include "./log_stream.h"
+#include <cstdint>
 
 namespace ara
 {

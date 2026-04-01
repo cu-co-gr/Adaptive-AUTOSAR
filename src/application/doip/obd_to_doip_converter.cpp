@@ -1,5 +1,6 @@
 #include "./obd_to_doip_converter.h"
 #include "../../ara/diag/routing/routable_uds_service.h"
+#include <cstdint>
 
 namespace application
 {

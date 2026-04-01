@@ -1,4 +1,5 @@
 #include "./logging_framework.h"
+#include <stdexcept>
 
 namespace ara
 {

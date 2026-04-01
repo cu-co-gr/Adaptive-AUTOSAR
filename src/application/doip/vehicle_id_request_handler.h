@@ -4,6 +4,7 @@
 #include <doiplib/message_handler.h>
 #include <doiplib/vehicle_id_request.h>
 #include <doiplib/vehicle_id_response.h>
+#include <cstdint>
 
 namespace application
 {

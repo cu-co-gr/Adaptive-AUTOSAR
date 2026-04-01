@@ -9,6 +9,7 @@
 #include "../../ara/phm/supervisors/deadline_supervision.h"
 #include "../../ara/phm/supervisors/global_supervision.h"
 #include "../helper/log_recovery_action.h"
+#include <cstdint>
 
 namespace application
 {

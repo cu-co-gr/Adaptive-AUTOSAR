@@ -1,4 +1,5 @@
 #include "./worker_thread.h"
+#include <cstdint>
 
 namespace ara
 {

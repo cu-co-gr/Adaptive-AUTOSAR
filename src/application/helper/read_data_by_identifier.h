@@ -5,6 +5,7 @@
 #include "../../ara/diag/routing/uds_service_router.h"
 #include "./curl_wrapper.h"
 #include "./memory_cache.h"
+#include <cstdint>
 
 namespace application
 {

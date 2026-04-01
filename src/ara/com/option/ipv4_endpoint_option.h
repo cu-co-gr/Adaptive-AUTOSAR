@@ -5,6 +5,7 @@
 #include <memory>
 #include "./option.h"
 #include "../helper/ipv4_address.h"
+#include <cstdint>
 
 namespace ara
 {

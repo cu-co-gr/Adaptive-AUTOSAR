@@ -1,4 +1,5 @@
 #include "./nrc_exception.h"
+#include <cstdint>
 
 namespace ara
 {

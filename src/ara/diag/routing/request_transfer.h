@@ -3,6 +3,8 @@
 
 #include "../reentrancy.h"
 #include "./transfer_data.h"
+#include <stdexcept>
+#include <cstdint>
 
 namespace ara
 {

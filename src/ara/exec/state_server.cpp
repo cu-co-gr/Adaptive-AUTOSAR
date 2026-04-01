@@ -1,4 +1,6 @@
 #include "./state_server.h"
+#include <stdexcept>
+#include <cstdint>
 
 namespace ara
 {

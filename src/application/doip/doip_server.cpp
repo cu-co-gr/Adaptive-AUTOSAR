@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <stdexcept>
 #include "./doip_server.h"
+#include <cstdint>
 
 namespace application
 {

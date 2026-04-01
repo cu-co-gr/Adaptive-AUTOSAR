@@ -3,6 +3,7 @@
 
 #include <vector>
 #include "./function_group.h"
+#include <cstdint>
 
 namespace ara
 {

@@ -1,6 +1,7 @@
 #include <thread>
 #include <chrono>
 #include "./main_state.h"
+#include <stdexcept>
 
 namespace ara
 {

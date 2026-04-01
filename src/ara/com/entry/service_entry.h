@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 #include "./entry.h"
+#include <stdexcept>
+#include <cstdint>
 
 namespace ara
 {

@@ -5,6 +5,7 @@
 #include <functional>
 #include <future>
 #include <vector>
+#include <cstdint>
 
 namespace ara
 {

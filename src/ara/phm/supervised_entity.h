@@ -5,6 +5,7 @@
 #include <type_traits>
 #include "../core/instance_specifier.h"
 #include "./checkpoint_communicator.h"
+#include <cstdint>
 
 namespace ara
 {

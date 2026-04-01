@@ -1,4 +1,5 @@
 #include "./payload_helper.h"
+#include <cstdint>
 
 namespace ara
 {

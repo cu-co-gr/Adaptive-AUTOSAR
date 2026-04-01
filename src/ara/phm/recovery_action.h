@@ -4,6 +4,7 @@
 #include "../core/result.h"
 #include "../core/instance_specifier.h"
 #include "../exec/execution_error_event.h"
+#include <cstdint>
 
 namespace ara
 {

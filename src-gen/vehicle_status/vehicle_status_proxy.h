@@ -6,6 +6,7 @@
 #include <string>
 #include "ara/com/service_proxy.h"
 #include "./vehicle_status_data.h"
+#include <stdexcept>
 
 namespace ara
 {

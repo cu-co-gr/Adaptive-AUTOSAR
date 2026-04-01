@@ -5,6 +5,8 @@
 #include <asyncbsdsocket/tcp_client.h>
 #include "../../helper/concurrent_queue.h"
 #include "./rpc_client.h"
+#include <stdexcept>
+#include <cstdint>
 
 namespace ara
 {

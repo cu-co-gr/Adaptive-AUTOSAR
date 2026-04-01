@@ -2,6 +2,7 @@
 #define DOWNLOAD_H
 
 #include "./routing/request_transfer.h"
+#include <cstdint>
 
 namespace ara
 {

@@ -1,5 +1,7 @@
 #include "./dtc_information.h"
 #include "./diag_error_domain.h"
+#include <stdexcept>
+#include <cstdint>
 
 namespace ara
 {

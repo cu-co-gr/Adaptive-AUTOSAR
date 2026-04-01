@@ -1,5 +1,7 @@
 #include <algorithm>
 #include "./pubsub_event_network_layer.h"
+#include <stdexcept>
+#include <cstdint>
 
 namespace ara
 {

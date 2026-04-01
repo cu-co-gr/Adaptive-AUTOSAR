@@ -1,5 +1,6 @@
 #include "../diag_error_domain.h"
 #include "./routable_uds_service.h"
+#include <cstdint>
 
 namespace ara
 {

@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <vector>
 #include "../helper/payload_helper.h"
+#include <cstdint>
 
 namespace ara
 {

@@ -1,6 +1,7 @@
 #include <stdexcept>
 #include "../../option/ipv4_endpoint_option.h"
 #include "./someip_sd_client.h"
+#include <cstdint>
 
 namespace ara
 {

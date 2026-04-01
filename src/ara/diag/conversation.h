@@ -7,6 +7,7 @@
 #include <string>
 #include "../core/result.h"
 #include "./meta_info.h"
+#include <cstdint>
 
 namespace ara
 {

@@ -2,6 +2,8 @@
 #define ECU_RESET_REQUEST_H
 
 #include "./routing/routable_uds_service.h"
+#include <stdexcept>
+#include <cstdint>
 
 namespace ara
 {

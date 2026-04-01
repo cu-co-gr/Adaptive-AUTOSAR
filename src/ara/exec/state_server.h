@@ -8,6 +8,8 @@
 #include "../com/someip/rpc/rpc_server.h"
 #include "../sm/trigger.h"
 #include "./exec_exception.h"
+#include <stdexcept>
+#include <cstdint>
 
 namespace ara
 {

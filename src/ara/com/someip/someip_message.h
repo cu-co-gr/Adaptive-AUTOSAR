@@ -6,6 +6,7 @@
 #include <vector>
 #include <limits>
 #include "../helper/payload_helper.h"
+#include <cstdint>
 
 namespace ara
 {

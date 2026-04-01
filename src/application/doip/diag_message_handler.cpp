@@ -1,5 +1,7 @@
 #include <doiplib/diag_message_ack.h>
 #include "./diag_message_handler.h"
+#include <stdexcept>
+#include <cstdint>
 
 namespace application
 {

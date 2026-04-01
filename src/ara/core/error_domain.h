@@ -2,6 +2,7 @@
 #define ERROR_DOMAIN_H
 
 #include <stdint.h>
+#include <cstdint>
 
 namespace ara
 {

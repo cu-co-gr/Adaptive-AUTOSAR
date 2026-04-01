@@ -1,6 +1,7 @@
 #include "../../ara/diag/conversation.h"
 #include "./read_data_by_identifier.h"
 #include <iostream>
+#include <cstdint>
 
 namespace application
 {

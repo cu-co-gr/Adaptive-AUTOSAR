@@ -3,6 +3,7 @@
 
 #include <array>
 #include "./routable_uds_service.h"
+#include <cstdint>
 
 namespace ara
 {

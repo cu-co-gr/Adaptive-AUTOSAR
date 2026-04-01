@@ -1,6 +1,7 @@
 #include "./vehicle_status_data.h"
 
 #include <cstring>
+#include <cstdint>
 
 namespace application
 {

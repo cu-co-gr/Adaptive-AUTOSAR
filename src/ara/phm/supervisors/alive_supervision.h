@@ -5,6 +5,8 @@
 #include <chrono>
 #include <future>
 #include "./elementary_supervision.h"
+#include <stdexcept>
+#include <cstdint>
 
 namespace ara
 {

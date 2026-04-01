@@ -1,5 +1,6 @@
 #include <sstream>
 #include "./ipv4_address.h"
+#include <cstdint>
 
 namespace ara
 {

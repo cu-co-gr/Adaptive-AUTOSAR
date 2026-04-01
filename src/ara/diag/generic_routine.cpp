@@ -1,4 +1,5 @@
 #include "generic_routine.h"
+#include <cstdint>
 
 namespace ara
 {

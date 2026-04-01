@@ -1,4 +1,5 @@
 #include "./upload.h"
+#include <cstdint>
 
 namespace ara
 {

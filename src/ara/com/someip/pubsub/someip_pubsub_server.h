@@ -9,6 +9,7 @@
 #include "./fsm/service_down_state.h"
 #include "./fsm/notsubscribed_state.h"
 #include "./fsm/subscribed_state.h"
+#include <cstdint>
 
 namespace ara
 {

@@ -7,6 +7,7 @@
 #include "../core/instance_specifier.h"
 #include "./common.h"
 #include "./argument.h"
+#include <cstdint>
 
 namespace ara
 {

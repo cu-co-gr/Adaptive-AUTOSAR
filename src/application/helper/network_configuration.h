@@ -5,6 +5,7 @@
 #include <string>
 #include "../../arxml/arxml_reader.h"
 #include "../../ara/com/option/option.h"
+#include <cstdint>
 
 namespace application
 {

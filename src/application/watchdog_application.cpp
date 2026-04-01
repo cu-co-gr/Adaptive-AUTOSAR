@@ -4,6 +4,7 @@
 #include "../../src-gen/vehicle_status/vehicle_status_proxy.h"
 #include "../../src-gen/vehicle_status/vehicle_status_data.h"
 #include "./watchdog_application.h"
+#include <cstdint>
 
 namespace application
 {

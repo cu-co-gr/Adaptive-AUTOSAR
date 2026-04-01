@@ -3,6 +3,8 @@
 
 #include "./ipv4_endpoint_option.h"
 #include "./loadbalancing_option.h"
+#include <stdexcept>
+#include <cstdint>
 
 namespace ara
 {

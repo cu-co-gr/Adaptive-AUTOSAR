@@ -12,6 +12,7 @@
 #include "./fsm/service_ready_state.h"
 #include "./fsm/stopped_state.h"
 #include "./someip_sd_agent.h"
+#include <cstdint>
 
 namespace ara
 {

@@ -4,6 +4,7 @@
 #include <array>
 #include <vector>
 #include <stdint.h>
+#include <cstdint>
 
 namespace ara
 {

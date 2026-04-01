@@ -2,6 +2,7 @@
 #include "../../ara/exec/execution_client.h"
 #include "../helper/argument_configuration.h"
 #include "./state_management.h"
+#include <stdexcept>
 
 namespace application
 {

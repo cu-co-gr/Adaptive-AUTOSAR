@@ -3,6 +3,7 @@
 #include "../helper/argument_configuration.h"
 #include "../../arxml/arxml_reader.h"
 #include "./execution_management.h"
+#include <stdexcept>
 
 namespace application
 {

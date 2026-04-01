@@ -1,5 +1,6 @@
 #include <thread>
 #include "./deterministic_client.h"
+#include <cstdint>
 
 namespace ara
 {

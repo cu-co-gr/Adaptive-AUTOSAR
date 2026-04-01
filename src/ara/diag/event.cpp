@@ -2,6 +2,7 @@
 #include <limits>
 #include <bitset>
 #include "./event.h"
+#include <cstdint>
 
 namespace ara
 {

@@ -4,6 +4,8 @@
 #include <utility>
 #include "../someip_message.h"
 #include "../../entry/entry.h"
+#include <stdexcept>
+#include <cstdint>
 
 namespace ara
 {

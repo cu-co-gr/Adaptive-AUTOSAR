@@ -6,6 +6,7 @@
 #include <functional>
 #include "../core/instance_specifier.h"
 #include "../core/result.h"
+#include <cstdint>
 
 namespace ara
 {

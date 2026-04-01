@@ -1,4 +1,5 @@
 #include "client_repetition_state.h"
+#include <cstdint>
 
 namespace ara
 {

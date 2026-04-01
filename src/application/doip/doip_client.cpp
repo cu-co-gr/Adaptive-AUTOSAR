@@ -5,6 +5,8 @@
 #include <doiplib/vehicle_id_request.h>
 #include <doiplib/vehicle_id_response.h>
 #include "./doip_client.h"
+#include <stdexcept>
+#include <cstdint>
 
 namespace application
 {

@@ -3,6 +3,7 @@
 
 #include "./error_code.h"
 #include "./optional.h"
+#include <stdexcept>
 
 namespace ara
 {

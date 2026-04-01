@@ -3,6 +3,7 @@
 
 #include "./client_service_state.h"
 #include "./repetition_state.h"
+#include <cstdint>
 
 namespace ara
 {

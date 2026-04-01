@@ -1,6 +1,7 @@
 #include <stdexcept>
 #include <thread>
 #include "./someip_sd_server.h"
+#include <cstdint>
 
 namespace ara
 {

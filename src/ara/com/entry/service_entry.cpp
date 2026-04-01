@@ -1,4 +1,6 @@
 #include "./service_entry.h"
+#include <stdexcept>
+#include <cstdint>
 
 namespace ara
 {

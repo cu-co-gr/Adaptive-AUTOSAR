@@ -5,6 +5,7 @@
 #include <map>
 #include <string>
 #include "../core/optional.h"
+#include <cstdint>
 
 namespace ara
 {

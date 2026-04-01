@@ -1,4 +1,5 @@
 #include "./loadbalancing_option.h"
+#include <cstdint>
 
 namespace ara
 {

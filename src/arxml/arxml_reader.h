@@ -5,6 +5,7 @@
 #include <string>
 #include <initializer_list>
 #include "./arxml_node_range.h"
+#include <stdexcept>
 
 /// @brief AUTOSAR XML (ARXML) configuration files utilities namespace
 namespace arxml

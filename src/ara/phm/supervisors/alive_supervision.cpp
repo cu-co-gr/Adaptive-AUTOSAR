@@ -1,6 +1,7 @@
 #include <stdexcept>
 #include <thread>
 #include "./alive_supervision.h"
+#include <cstdint>
 
 namespace ara
 {

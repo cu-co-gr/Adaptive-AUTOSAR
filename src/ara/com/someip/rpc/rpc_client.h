@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <vector>
 #include "./someip_rpc_message.h"
+#include <cstdint>
 
 namespace ara
 {

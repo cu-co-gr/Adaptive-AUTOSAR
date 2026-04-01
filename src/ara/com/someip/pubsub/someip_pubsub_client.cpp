@@ -1,4 +1,5 @@
 #include "./someip_pubsub_client.h"
+#include <cstdint>
 
 namespace ara
 {

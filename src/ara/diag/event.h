@@ -6,6 +6,8 @@
 #include <map>
 #include "../core/instance_specifier.h"
 #include "../core/result.h"
+#include <stdexcept>
+#include <cstdint>
 
 namespace ara
 {

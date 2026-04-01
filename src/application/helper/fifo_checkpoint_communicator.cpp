@@ -2,6 +2,8 @@
 #include <thread>
 #include "../../ara/com/helper/payload_helper.h"
 #include "./fifo_checkpoint_communicator.h"
+#include <stdexcept>
+#include <cstdint>
 
 namespace application
 {

@@ -1,5 +1,7 @@
 #include <utility>
 #include "./execution_client.h"
+#include <stdexcept>
+#include <cstdint>
 
 namespace ara
 {

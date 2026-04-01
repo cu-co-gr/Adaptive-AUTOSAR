@@ -1,4 +1,6 @@
 #include "./uds_service_router.h"
+#include <stdexcept>
+#include <cstdint>
 
 namespace ara
 {

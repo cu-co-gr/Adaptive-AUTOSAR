@@ -1,5 +1,7 @@
 #include <algorithm>
 #include "./sd_network_layer.h"
+#include <stdexcept>
+#include <cstdint>
 
 namespace ara
 {

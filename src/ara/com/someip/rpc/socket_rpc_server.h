@@ -4,6 +4,8 @@
 #include <asyncbsdsocket/poller.h>
 #include "../../helper/concurrent_queue.h"
 #include "./rpc_server.h"
+#include <stdexcept>
+#include <cstdint>
 
 namespace ara
 {

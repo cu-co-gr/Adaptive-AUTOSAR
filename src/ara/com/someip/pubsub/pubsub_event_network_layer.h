@@ -4,6 +4,8 @@
 #include <asyncbsdsocket/poller.h>
 #include <asyncbsdsocket/udp_client.h>
 #include "../../helper/concurrent_queue.h"
+#include <stdexcept>
+#include <cstdint>
 
 namespace ara
 {

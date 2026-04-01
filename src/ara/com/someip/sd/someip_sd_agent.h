@@ -5,6 +5,7 @@
 #include "../../helper/finite_state_machine.h"
 #include "../../helper/network_layer.h"
 #include "./someip_sd_message.h"
+#include <stdexcept>
 
 namespace ara
 {

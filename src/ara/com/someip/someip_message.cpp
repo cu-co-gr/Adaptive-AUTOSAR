@@ -1,4 +1,6 @@
 #include "./someip_message.h"
+#include <stdexcept>
+#include <cstdint>
 
 namespace ara
 {

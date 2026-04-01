@@ -1,4 +1,5 @@
 #include "./request_transfer_exit.h"
+#include <cstdint>
 
 namespace ara
 {

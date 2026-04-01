@@ -6,6 +6,7 @@
 #include <condition_variable>
 #include <atomic>
 #include "./debouncer.h"
+#include <cstdint>
 
 namespace ara
 {

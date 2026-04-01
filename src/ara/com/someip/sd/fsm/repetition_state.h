@@ -5,6 +5,8 @@
 #include <cmath>
 #include <chrono>
 #include "./timer_set_state.h"
+#include <stdexcept>
+#include <cstdint>
 
 namespace ara
 {

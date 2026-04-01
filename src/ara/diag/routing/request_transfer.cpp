@@ -1,5 +1,7 @@
 #include "./request_transfer.h"
 #include "./nrc_exception.h"
+#include <stdexcept>
+#include <cstdint>
 
 namespace ara
 {

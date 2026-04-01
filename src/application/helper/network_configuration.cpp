@@ -1,4 +1,5 @@
 #include "./network_configuration.h"
+#include <cstdint>
 
 namespace application
 {

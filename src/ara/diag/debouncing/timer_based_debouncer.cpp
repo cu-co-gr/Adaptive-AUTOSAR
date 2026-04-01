@@ -1,5 +1,6 @@
 #include <chrono>
 #include "./timer_based_debouncer.h"
+#include <cstdint>
 
 namespace ara
 {

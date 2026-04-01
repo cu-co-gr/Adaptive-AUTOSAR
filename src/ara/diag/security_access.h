@@ -4,6 +4,7 @@
 #include "./reentrancy.h"
 #include "./routing/delay_timer.h"
 #include "./routing/routable_uds_service.h"
+#include <cstdint>
 
 namespace ara
 {

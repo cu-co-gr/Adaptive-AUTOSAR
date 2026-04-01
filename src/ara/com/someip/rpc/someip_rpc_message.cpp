@@ -1,5 +1,6 @@
 #include <utility>
 #include "./someip_rpc_message.h"
+#include <cstdint>
 
 namespace ara
 {

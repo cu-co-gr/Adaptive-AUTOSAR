@@ -6,6 +6,7 @@
 #include <string>
 #include "./execution_client.h"
 #include "../com/someip/rpc/rpc_server.h"
+#include <cstdint>
 
 namespace ara
 {

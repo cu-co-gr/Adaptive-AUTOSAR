@@ -1,4 +1,5 @@
 #include "./deadline_supervision.h"
+#include <stdexcept>
 
 namespace ara
 {

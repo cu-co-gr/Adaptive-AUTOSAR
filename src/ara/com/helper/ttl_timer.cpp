@@ -1,5 +1,6 @@
 #include <chrono>
 #include "./ttl_timer.h"
+#include <cstdint>
 
 namespace ara
 {

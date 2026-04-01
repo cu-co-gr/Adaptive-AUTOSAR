@@ -5,6 +5,7 @@
 #include <string>
 #include "ara/com/service_skeleton.h"
 #include "./vehicle_status_data.h"
+#include <stdexcept>
 
 namespace ara
 {

@@ -1,4 +1,5 @@
 #include "./instance_specifier.h"
+#include <cstdint>
 
 namespace ara
 {

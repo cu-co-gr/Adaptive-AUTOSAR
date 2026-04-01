@@ -1,6 +1,8 @@
 #include "../../ara/com/someip/sd/sd_network_layer.h"
 #include "../../application/helper/argument_configuration.h"
 #include "./diagnostic_manager.h"
+#include <stdexcept>
+#include <cstdint>
 
 namespace application
 {

@@ -1,5 +1,6 @@
 #include <stdexcept>
 #include "./profile11.h"
+#include <cstdint>
 
 namespace ara
 {

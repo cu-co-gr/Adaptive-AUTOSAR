@@ -6,6 +6,7 @@
 #include "./execution_error_event.h"
 #include "./function_group_state.h"
 #include "./exec_exception.h"
+#include <cstdint>
 
 namespace ara
 {

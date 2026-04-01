@@ -1,6 +1,7 @@
 #include <algorithm>
 #include "../com/helper/payload_helper.h"
 #include "./function_group_state.h"
+#include <cstdint>
 
 namespace ara
 {

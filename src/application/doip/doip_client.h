@@ -6,6 +6,8 @@
 #include <asyncbsdsocket/tcp_client.h>
 #include "../../ara/core/optional.h"
 #include "../../ara/com/helper/concurrent_queue.h"
+#include <stdexcept>
+#include <cstdint>
 
 namespace application
 {

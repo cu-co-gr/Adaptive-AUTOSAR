@@ -2,6 +2,7 @@
 #define REQUEST_TRANSFER_EXIT_H
 
 #include "./transfer_data.h"
+#include <cstdint>
 
 namespace ara
 {

@@ -4,6 +4,7 @@
 #include <map>
 #include <functional>
 #include <type_traits>
+#include <cstdint>
 
 namespace ara
 {

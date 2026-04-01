@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include "./routing/routable_uds_service.h"
 #include "./reentrancy.h"
+#include <cstdint>
 
 namespace ara
 {

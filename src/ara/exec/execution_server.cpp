@@ -1,4 +1,5 @@
 #include "./execution_server.h"
+#include <cstdint>
 
 namespace ara
 {

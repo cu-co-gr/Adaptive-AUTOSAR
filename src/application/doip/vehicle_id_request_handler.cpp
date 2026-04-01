@@ -1,4 +1,5 @@
 #include "./vehicle_id_request_handler.h"
+#include <cstdint>
 
 namespace application
 {

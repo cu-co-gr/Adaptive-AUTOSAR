@@ -2,6 +2,7 @@
 #define EXECUTION_ERROR_EVENT_H
 
 #include "./function_group.h"
+#include <cstdint>
 
 namespace ara
 {

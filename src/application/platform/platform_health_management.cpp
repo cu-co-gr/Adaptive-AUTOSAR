@@ -1,5 +1,7 @@
 #include "../helper/argument_configuration.h"
 #include "./platform_health_management.h"
+#include <stdexcept>
+#include <cstdint>
 
 namespace application
 {

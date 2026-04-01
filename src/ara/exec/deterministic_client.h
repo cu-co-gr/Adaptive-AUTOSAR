@@ -9,6 +9,7 @@
 #include "../core/result.h"
 #include "./worker_runnable.h"
 #include "./helper/atomic_optional.h"
+#include <cstdint>
 
 namespace ara
 {

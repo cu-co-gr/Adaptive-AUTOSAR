@@ -4,6 +4,7 @@
 #include <atomic>
 #include <stdint.h>
 #include <random>
+#include <cstdint>
 
 namespace ara
 {

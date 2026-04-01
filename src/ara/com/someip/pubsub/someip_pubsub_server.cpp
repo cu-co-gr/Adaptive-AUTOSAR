@@ -2,6 +2,7 @@
 #include "../../helper/payload_helper.h"
 #include "./pubsub_event_network_layer.h"
 #include "./someip_pubsub_server.h"
+#include <cstdint>
 
 namespace ara
 {

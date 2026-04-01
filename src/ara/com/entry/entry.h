@@ -6,6 +6,7 @@
 #include <memory>
 #include <stdexcept>
 #include "../option/option.h"
+#include <cstdint>
 
 namespace ara
 {

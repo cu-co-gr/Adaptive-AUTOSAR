@@ -5,6 +5,7 @@
 #include <doiplib/diag_message.h>
 #include "../helper/read_data_by_identifier.h"
 #include "../../ara/diag/routing/uds_service_router.h"
+#include <cstdint>
 
 namespace application
 {
