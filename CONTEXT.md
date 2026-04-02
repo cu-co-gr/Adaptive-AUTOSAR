@@ -57,13 +57,12 @@ Target: aarch64-linux-gnu-gcc 14.2.0 (Debian). Build dir: `build-aarch64/`.
 
 Configure command:
 ```bash
-cmake -DCMAKE_BUILD_TYPE=Debug \
-  -DCMAKE_C_COMPILER=/usr/bin/aarch64-linux-gnu-gcc \
-  -DCMAKE_CXX_COMPILER=/usr/bin/aarch64-linux-gnu-g++ \
-  -DCMAKE_SYSTEM_NAME=Linux \
-  -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
+  cmake -DCMAKE_BUILD_TYPE=Debug\
+  -DCMAKE_TOOLCHAIN_FILE=cmake/aarch64-toolchain.cmake \
+  -DJSONCPP_WITH_TESTS=OFF \
+  -DJSONCPP_WITH_POST_BUILD_UNITTEST=OFF \
   -Dbuild_tests=OFF \
-  -S . -B build-aarch64
+  -S . -B build-arm64
 ```
 
 **Fixes applied (2026-04-01):**

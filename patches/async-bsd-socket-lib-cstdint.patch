@@ -1,0 +1,12 @@
+--- a/include/asyncbsdsocket/fifo_sender.h
++++ b/include/asyncbsdsocket/fifo_sender.h
+@@ -6,2 +6,3 @@
+ #include <array>
++#include <cstdint>
+ #include "./communicator.h"
+--- a/include/asyncbsdsocket/fifo_receiver.h
++++ b/include/asyncbsdsocket/fifo_receiver.h
+@@ -6,2 +6,3 @@
+ #include <array>
++#include <cstdint>
+ #include "./communicator.h"

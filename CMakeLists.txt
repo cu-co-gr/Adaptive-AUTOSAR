@@ -34,6 +34,7 @@ FetchContent_Declare(
 FetchContent_Declare(
   Async-BSD-Socket-Lib
   URL https://github.com/langroodi/Async-BSD-Socket-Lib/archive/8c84da8f4b5e7552b41a54c92acb0b4565d07024.zip
+  PATCH_COMMAND patch -p1 --forward --ignore-whitespace -i ${CMAKE_SOURCE_DIR}/patches/async-bsd-socket-lib-cstdint.patch
 )
 
 # Fetching  OBD-II-Emulator for OBD2 CAN bus communication
