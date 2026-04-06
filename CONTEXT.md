@@ -1,80 +1,35 @@
 # Context
 In order to create and deploy adaptive applications in a way as close as possible to a commercial
 environment we need to expand capabilities of the Adaptive Platform (AP). In the big picture this
-means also to review APIs and Artifacts to be more complete and consistent with the AUTOSAR SWSs.
+means also to review APIs and Artifacts to be more complete and consistent with the AUTOSAR SWSs. 
+It also means that the AP should be deployable in an embedded target. 
 
-The first architectural gap addressed was to split the executables so that Execution Manager
-indeed takes responsibility to start and execute them as independent OS processes.
 
-State Manager did not require major work to be consistent with the SWSs as it already provides
-sufficient interfaces to orchestrate state changes once EM hands over.
-
-## Completed
-
-**Stage 5 (committed d14d317e):** Each platform service (ExtendedVehicle, DiagnosticManager,
-PlatformHealthManagement, WatchdogApplication) has its own main() entry point and CMake target.
-EM now has a SIGTERM/SIGINT handler so that Ctrl+C triggers a clean shutdown sequence:
-signal → gRunning=false → Terminate() → ProcessManager::TerminateAll() → SIGTERM to children
-(2s grace) → SIGKILL backstop. Each child runs its own Terminate() within the grace window.
-
-**Stage 7 (current):** ExecutionClient decoupling + run_demo.sh robustness.
-
-- `<FIFO-PATH>` added to PlatformHealthManagement and ExtendedVehicle process entries in
-  `configuration/machine_a/execution_manifest.arxml`. EM parses it in `parseProcessDescriptors()`
-  (new `fifoPath` field on `ProcessDescriptor`) and appends it to the child's argv at spawn time.
-- `platform_health_management_main.cpp` and `extended_vehicle_main.cpp` no longer include
-  `execution_management.h`; FIFO path is read from `argv[3]` and the function group name is
-  the manifest literal `"MachineFG"`.
-- All five child-process mains now call `ExecutionClient::ReportExecutionState(kRunning)` per
-  SWS_EM §5. Each main creates a `SocketRpcClient` connecting back to EM's RPC server (host/port
-  parsed from the execution manifest via `helper::TryGetRpcConfiguration()`). The call runs in a
-  `std::async` thread so the main-thread poller loop can service the send/receive callbacks.
-  `CMakeLists.txt`: added `network_configuration` and `rpc_configuration` sources to the
-  `watchdog_application` target to satisfy the new link dependency.
-- `run_demo.sh` cleanup() now pkills known child binaries after `wait`, matching what
-  `test_watchdog_event.sh` already did.
-- All 21 functional checks pass; 475/479 unit tests pass (4 pre-existing env failures).
-
-**Stage 6:** ara::com Proxy/Skeleton layer introduced per SWS_CM §8.2–8.4.
-Applications no longer interact with SOME/IP directly.
-
-- `src/ara/com/service_skeleton.h` and `service_proxy.h`: framework base classes.
-- `src-gen/vehicle_status/`: hand-generated Proxy and Skeleton for the VehicleStatus service
-  (VehicleStatusData with Serialize/Deserialize, VehicleStatusSkeleton wrapping SOME/IP SD server
-  + PubSub server, VehicleStatusProxy wrapping SOME/IP SD client + PubSub receiver).
-- `ExtendedVehicle` refactored to use `VehicleStatusSkeleton` exclusively.
-- `WatchdogApplication` refactored to use `VehicleStatusProxy` exclusively; `mFirstEventReceived`
-  flag added so the watchdog timeout only fires after at least one event has been seen (avoids
-  false expiry during SD discovery startup window).
-- `test_watchdog_event.sh` cleanup() extended with pkill for orphaned child processes; `-a` flag
-  added to all grep calls to handle binary log files; watchdog-fired check moved after Machine B
-  kill to guarantee log buffer flush.
-- All 21 functional test checks pass; 475/479 unit tests pass (4 pre-existing env failures).
-
-## aarch64 Cross-Compilation (current)
-
-Target: aarch64-linux-gnu-gcc 14.2.0 (Debian). Build dir: `build-aarch64/`.
+## Build and deploy in Arduino UNO Q (aarch64-linux-gnu-gcc 14.2.0 (Debian)) a.k.a Machine C
 
 Configure command:
 ```bash
   cmake -DCMAKE_BUILD_TYPE=Debug\
   -DCMAKE_TOOLCHAIN_FILE=cmake/aarch64-toolchain.cmake \
-  -DJSONCPP_WITH_TESTS=OFF \
-  -DJSONCPP_WITH_POST_BUILD_UNITTEST=OFF \
   -Dbuild_tests=OFF \
-  -S . -B build-arm64
+  -S . -B build-aarch64
+``` 
+Build command 
+```bash
+  cmake --build build-aarch64
 ```
+Create deployment package 
+```bash
+  cmake --install build-aarch64 --prefix deploy/
+```
+Copy files to ArduinoUNOQ 
+deploy\*
+configuration\machine_c\*
 
-**Fixes applied (2026-04-01):**
-- GCC 14 on aarch64 is stricter about implicit transitive includes than GCC 11 on x86.
-  161 source files in `src/` and `src-gen/` had `#include <stdexcept>` and/or `#include <cstdint>`
-  added wherever `std::runtime_error`/`uint8_t` etc. were used without the explicit include.
-- The fetched `async-bsd-socket-lib` dependency (`fifo_sender.h`, `fifo_receiver.h`) also
-  needed `#include <cstdint>`. These are patched in-place in `build-aarch64/_deps/`; if the
-  build dir is wiped, re-apply these two patches or the configure step will fail to build
-  the async socket lib.
+Note that deploy package has been created with execution permissions. use scp -p flag to copy permisions OR run chmod after the copy to permit execution 
+Note that configuration\machine_c\execution_manifest.arxml stablish relative paths to all binaries and configuration files. Make sure to honor the folder structure when copying
 
-All 6 application binaries build cleanly as ARM aarch64 ELF executables.
+
 
 ## TODOS
 
@@ -93,5 +48,13 @@ All 6 application binaries build cleanly as ARM aarch64 ELF executables.
 3. Both machine_a and machine_b execution_manifest.arxml now have all five process entries
    (SM, PHM, EV, DM, WA) — symmetric deployment confirmed. FIFO-PATH set to /tmp/fifo_18080
    (Machine A) and /tmp/fifo_18081 (Machine B) for PHM and EV processes. WA has no FIFO-PATH.
+
+4. CMakeLists.txt is now patching the fetched `async-bsd-socket-lib` dependency (`fifo_sender.h`, `fifo_receiver.h`).
+   This is needed for build-aarch64. We will need to figure out if this library should be replaced according to AUTOSAR OS Interface specs. 
+   Otherwise we probably want to fix the changes in the async-bsd-socket-lib repo.  
+
+5. We need to bring up github actions to have both builds clean.  
+
+6. after deployment in UNOQ is clean. We will have to try and bugfix cross machine communication , IP, ports etc. Also figure out bus monitoring and functional test.  At this point we probably will need to deal with Network management. Here is where extending AP capabilities will become a topic again.  
 
 

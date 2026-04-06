@@ -10,24 +10,38 @@ set(CMAKE_CXX_STANDARD 14)
 # Enable 'rdyamic' switch to export the executable's symbols for debugging
 set(CMAKE_ENABLE_EXPORTS 1)
 
+# Embed a relative RPATH so installed binaries find lib/ next to bin/ on the
+# deployment target without requiring LD_LIBRARY_PATH.
+# BUILD_WITH_INSTALL_RPATH skips the install-time RPATH rewrite step, which
+# fails when cross-compiling (patchelf can't run on ARM binaries on an x86 host).
+set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib")
+set(CMAKE_BUILD_WITH_INSTALL_RPATH ON)
+
 include(FetchContent)
 
 # Fetching GoogleTest 1.12.1 for unit testing
+# EXCLUDE_FROM_ALL: suppress gtest's own install rules (test infra never deployed)
 FetchContent_Declare(
   googletest
   URL https://github.com/google/googletest/archive/58d77fa8070e8cec2dc1ed015d66b454c8d78850.zip
+  EXCLUDE_FROM_ALL
 )
 
 # Fetching libcurl 7.88.0 for REST API
+# EXCLUDE_FROM_ALL: suppress curl's own install rules; we install the runtime
+# .so via an explicit install(TARGETS libcurl ...) rule below instead.
 FetchContent_Declare(
   libcurl
   URL https://github.com/curl/curl/archive/3027611ca6d4cc5510d2d0fccc3e5a074e09a2fb.zip
+  EXCLUDE_FROM_ALL
 )
 
 # Fetching JsonCpp 1.9.5 for JSON parsing
+# EXCLUDE_FROM_ALL: suppress jsoncpp's own install rules
 FetchContent_Declare(
   jsoncpp_lib
   URL https://github.com/open-source-parsers/jsoncpp/archive/5defb4ed1a4293b8e2bf641e16b156fb9de498cc.zip
+  EXCLUDE_FROM_ALL
 )
 
 # Fetching Async-BSD-Socket-Lib for network abstraction
@@ -35,18 +49,21 @@ FetchContent_Declare(
   Async-BSD-Socket-Lib
   URL https://github.com/langroodi/Async-BSD-Socket-Lib/archive/8c84da8f4b5e7552b41a54c92acb0b4565d07024.zip
   PATCH_COMMAND patch -p1 --forward --ignore-whitespace -i ${CMAKE_SOURCE_DIR}/patches/async-bsd-socket-lib-cstdint.patch
+  EXCLUDE_FROM_ALL
 )
 
 # Fetching  OBD-II-Emulator for OBD2 CAN bus communication
 FetchContent_Declare(
   OBD-II-Emulator
   URL https://github.com/langroodi/OBD-II-Emulator/archive/2c33042a6397d7030f3bafb57b6b88b913d95cb2.zip
+  EXCLUDE_FROM_ALL
 )
 
 # Fetching  Doip-Lib for DoIP communication
 FetchContent_Declare(
   Doip-Lib
   URL https://github.com/langroodi/Doip-Lib/archive/5acfd483eb3dc90429a98dbe4b70de8b1db68af6.zip
+  EXCLUDE_FROM_ALL
 )
 
 FetchContent_MakeAvailable(
@@ -696,6 +713,49 @@ target_link_libraries(
   arxml
   ara_exec
   ara_log
+)
+
+########################################################################
+# Installation
+########################################################################
+
+include(GNUInstallDirs)
+
+install(
+  TARGETS
+    adaptive_autosar
+    platform_health_management
+    extended_vehicle
+    diagnostic_manager
+    watchdog_application
+    state_management
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
+                GROUP_READ GROUP_EXECUTE
+                WORLD_READ WORLD_EXECUTE
+)
+
+install(
+  TARGETS
+    arxml
+    ara_core
+    ara_log
+    ara_com
+    ara_exec
+    ara_sm
+    ara_diag
+    ara_phm
+    vehicle_status_gen
+    async_bsd_socket_lib
+    obd_ii_emulator
+    doip_lib
+    libcurl
+    jsoncpp_lib
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  NAMELINK_SKIP
+  PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
+              GROUP_READ GROUP_EXECUTE
+              WORLD_READ WORLD_EXECUTE
 )
 
 if(build_tests)

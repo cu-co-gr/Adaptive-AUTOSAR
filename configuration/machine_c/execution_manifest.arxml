@@ -54,20 +54,20 @@
                 <PROCESSES>
                     <PROCESS>
                         <SHORT-NAME>StateManagement</SHORT-NAME>
-                        <EXECUTABLE-PATH>./build-aarch64/bin/state_management</EXECUTABLE-PATH>
+                        <EXECUTABLE-PATH>./deploy/bin/state_management</EXECUTABLE-PATH>
                         <BOOTSTRAP>true</BOOTSTRAP>
                         <PROCESS-ARGUMENTS>
-                            <PROCESS-ARGUMENT>./configuration/machine_a_aarch64/execution_manifest.arxml</PROCESS-ARGUMENT>
+                            <PROCESS-ARGUMENT>./configuration/machine_c/execution_manifest.arxml</PROCESS-ARGUMENT>
                         </PROCESS-ARGUMENTS>
                     </PROCESS>
                     <PROCESS>
                         <SHORT-NAME>PlatformHealthManagement</SHORT-NAME>
-                        <EXECUTABLE-PATH>./build-aarch64/bin/platform_health_management</EXECUTABLE-PATH>
+                        <EXECUTABLE-PATH>./deploy/bin/platform_health_management</EXECUTABLE-PATH>
                         <BOOTSTRAP>false</BOOTSTRAP>
                         <FIFO-PATH>/tmp/fifo_18080</FIFO-PATH>
                         <PROCESS-ARGUMENTS>
-                            <PROCESS-ARGUMENT>./configuration/machine_a_aarch64/execution_manifest.arxml</PROCESS-ARGUMENT>
-                            <PROCESS-ARGUMENT>./configuration/machine_a/health_monitoring_manifest.arxml</PROCESS-ARGUMENT>
+                            <PROCESS-ARGUMENT>./configuration/machine_c/execution_manifest.arxml</PROCESS-ARGUMENT>
+                            <PROCESS-ARGUMENT>./configuration/machine_c/health_monitoring_manifest.arxml</PROCESS-ARGUMENT>
                         </PROCESS-ARGUMENTS>
                         <FUNCTION-GROUP-STATE-IREFS>
                             <FUNCTION-GROUP-STATE-IREF>
@@ -78,12 +78,12 @@
                     </PROCESS>
                     <PROCESS>
                         <SHORT-NAME>ExtendedVehicle</SHORT-NAME>
-                        <EXECUTABLE-PATH>./build-aarch64/bin/extended_vehicle</EXECUTABLE-PATH>
+                        <EXECUTABLE-PATH>./deploy/bin/extended_vehicle</EXECUTABLE-PATH>
                         <BOOTSTRAP>false</BOOTSTRAP>
                         <FIFO-PATH>/tmp/fifo_18080</FIFO-PATH>
                         <PROCESS-ARGUMENTS>
-                            <PROCESS-ARGUMENT>./configuration/machine_a_aarch64/execution_manifest.arxml</PROCESS-ARGUMENT>
-                            <PROCESS-ARGUMENT>./configuration/machine_a/extended_vehicle_manifest.arxml</PROCESS-ARGUMENT>
+                            <PROCESS-ARGUMENT>./configuration/machine_c/execution_manifest.arxml</PROCESS-ARGUMENT>
+                            <PROCESS-ARGUMENT>./configuration/machine_c/extended_vehicle_manifest.arxml</PROCESS-ARGUMENT>
                         </PROCESS-ARGUMENTS>
                         <FUNCTION-GROUP-STATE-IREFS>
                             <FUNCTION-GROUP-STATE-IREF>
@@ -94,11 +94,11 @@
                     </PROCESS>
                     <PROCESS>
                         <SHORT-NAME>DiagnosticManager</SHORT-NAME>
-                        <EXECUTABLE-PATH>./build-aarch64/bin/diagnostic_manager</EXECUTABLE-PATH>
+                        <EXECUTABLE-PATH>./deploy/bin/diagnostic_manager</EXECUTABLE-PATH>
                         <BOOTSTRAP>false</BOOTSTRAP>
                         <PROCESS-ARGUMENTS>
-                            <PROCESS-ARGUMENT>./configuration/machine_a_aarch64/execution_manifest.arxml</PROCESS-ARGUMENT>
-                            <PROCESS-ARGUMENT>./configuration/machine_a/diagnostic_manager_manifest.arxml</PROCESS-ARGUMENT>
+                            <PROCESS-ARGUMENT>./configuration/machine_c/execution_manifest.arxml</PROCESS-ARGUMENT>
+                            <PROCESS-ARGUMENT>./configuration/machine_c/diagnostic_manager_manifest.arxml</PROCESS-ARGUMENT>
                         </PROCESS-ARGUMENTS>
                         <FUNCTION-GROUP-STATE-IREFS>
                             <FUNCTION-GROUP-STATE-IREF>
@@ -109,11 +109,11 @@
                     </PROCESS>
                     <PROCESS>
                         <SHORT-NAME>WatchdogApplication</SHORT-NAME>
-                        <EXECUTABLE-PATH>./build-aarch64/bin/watchdog_application</EXECUTABLE-PATH>
+                        <EXECUTABLE-PATH>./deploy/bin/watchdog_application</EXECUTABLE-PATH>
                         <BOOTSTRAP>false</BOOTSTRAP>
                         <PROCESS-ARGUMENTS>
-                            <PROCESS-ARGUMENT>./configuration/machine_a_aarch64/execution_manifest.arxml</PROCESS-ARGUMENT>
-                            <PROCESS-ARGUMENT>./configuration/machine_a/watchdog_manifest.arxml</PROCESS-ARGUMENT>
+                            <PROCESS-ARGUMENT>./configuration/machine_c/execution_manifest.arxml</PROCESS-ARGUMENT>
+                            <PROCESS-ARGUMENT>./configuration/machine_c/watchdog_manifest.arxml</PROCESS-ARGUMENT>
                         </PROCESS-ARGUMENTS>
                         <FUNCTION-GROUP-STATE-IREFS>
                             <FUNCTION-GROUP-STATE-IREF>
