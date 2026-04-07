@@ -36,6 +36,11 @@ FetchContent_Declare(
   EXCLUDE_FROM_ALL
 )
 
+# Suppress jsoncpp's own ctest registrations (jsontestrunner_exe is never
+# built due to EXCLUDE_FROM_ALL, but jsoncpp still adds ctest entries).
+set(JSONCPP_WITH_TESTS OFF CACHE BOOL "" FORCE)
+set(JSONCPP_WITH_POST_BUILD_UNITTEST OFF CACHE BOOL "" FORCE)
+
 # Fetching JsonCpp 1.9.5 for JSON parsing
 # EXCLUDE_FROM_ALL: suppress jsoncpp's own install rules
 FetchContent_Declare(

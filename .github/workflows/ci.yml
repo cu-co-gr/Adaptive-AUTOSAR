@@ -52,7 +52,7 @@ jobs:
         run: cmake --build build-x86 --parallel $(nproc)
 
       - name: Run tests
-        run: ctest --test-dir build-x86 --output-on-failure
+        run: ctest --test-dir build-x86 --output-on-failure --exclude-regex "_NOT_BUILT"
 
       - name: Verify binary architecture
         run: |
