@@ -1,0 +1,122 @@
+# =============================================================================
+# GitHub Actions CI Pipeline — Adaptive AUTOSAR
+# Builds and tests on two architectures:
+#   - x86_64 : native build + unit tests + Doxygen publish
+#   - aarch64: cross-compiled build (Arduino UNO Q / embedded target)
+#
+# Triggers: every push and pull request to any branch
+# =============================================================================
+
+name: Adaptive AUTOSAR CI
+
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+    branches: [ "**" ]
+
+jobs:
+
+  # ---------------------------------------------------------------------------
+  # Job 1: Native x86_64 build + unit tests + Doxygen docs
+  # ---------------------------------------------------------------------------
+  build-x86_64:
+    name: Build + Test (x86_64)
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # libssl-dev is needed by libcurl's FetchContent configure step.
+      # gcc-11 and g++-11 are available on ubuntu-22.04 but not the default
+      # compiler symlink, so we install and reference them explicitly.
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            gcc-11 \
+            g++-11 \
+            libssl-dev
+
+      - name: Configure (CMake)
+        run: |
+          cmake \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_C_COMPILER=/usr/bin/x86_64-linux-gnu-gcc-11 \
+            -DCMAKE_CXX_COMPILER=/usr/bin/x86_64-linux-gnu-g++-11 \
+            -S . \
+            -B build-x86
+
+      - name: Build
+        run: cmake --build build-x86 --parallel $(nproc)
+
+      - name: Run tests
+        run: ctest --test-dir build-x86 --output-on-failure
+
+      - name: Verify binary architecture
+        run: |
+          file build-x86/bin/adaptive_autosar
+          echo "--- Expected: x86-64 ---"
+
+      - name: Upload x86_64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: adaptive-autosar-x86_64
+          path: build-x86/bin/
+          retention-days: 7
+
+      # Publish Doxygen docs to GitHub Pages (master branch only)
+
+  # ---------------------------------------------------------------------------
+  # Job 2: Cross-compiled aarch64 build
+  # Produces binaries that run on the Arduino UNO Q and other ARM64 targets.
+  # Tests are disabled — cross-compiled binaries cannot run on the x86 runner.
+  # ---------------------------------------------------------------------------
+  build-aarch64:
+    name: Build (aarch64 cross-compile)
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Enable ARM64 multiarch first so apt can find arm64 packages,
+      # then install the cross-compiler and ARM64 OpenSSL headers.
+      - name: Install dependencies + ARM64 cross-compiler
+        run: |
+          sudo dpkg --add-architecture arm64
+          sudo apt-get update
+          sudo apt-get install -y \
+            gcc-aarch64-linux-gnu \
+            g++-aarch64-linux-gnu \
+            libssl-dev:arm64
+
+      - name: Configure (CMake with toolchain)
+        run: |
+          cmake \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_TOOLCHAIN_FILE=cmake/aarch64-toolchain.cmake \
+            -Dbuild_tests=OFF \
+            -S . \
+            -B build-arm64
+
+      - name: Build
+        run: cmake --build build-arm64 --parallel $(nproc)
+
+      - name: Verify binary architecture
+        run: |
+          file build-arm64/bin/adaptive_autosar
+          echo "--- Expected: ARM aarch64 ---"
+
+      - name: Create deployment package
+        run: |
+          cmake --install build-arm64 --prefix deploy/
+          tar czf adaptive-autosar-aarch64.tar.gz deploy/ configuration/
+
+      - name: Upload aarch64 deployment package
+        uses: actions/upload-artifact@v4
+        with:
+          name: adaptive-autosar-aarch64
+          path: adaptive-autosar-aarch64.tar.gz
+          retention-days: 7
