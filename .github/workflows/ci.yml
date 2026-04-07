@@ -81,11 +81,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Enable ARM64 multiarch first so apt can find arm64 packages,
-      # then install the cross-compiler and ARM64 OpenSSL headers.
+      # GitHub-hosted ubuntu-22.04 runners only carry amd64 apt sources by
+      # default. Adding arm64 architecture causes apt-get update to fail because
+      # the default sources don't serve arm64 packages. The fix is to pin the
+      # existing sources to [arch=amd64] and add a separate ports.ubuntu.com
+      # source for arm64, then install the cross-compiler and ARM64 OpenSSL.
       - name: Install dependencies + ARM64 cross-compiler
         run: |
           sudo dpkg --add-architecture arm64
+          sudo sed -i 's/^deb /deb [arch=amd64] /' /etc/apt/sources.list
+          echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy main restricted universe multiverse" \
+            | sudo tee -a /etc/apt/sources.list
+          echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-updates main restricted universe multiverse" \
+            | sudo tee -a /etc/apt/sources.list
           sudo apt-get update
           sudo apt-get install -y \
             gcc-aarch64-linux-gnu \
