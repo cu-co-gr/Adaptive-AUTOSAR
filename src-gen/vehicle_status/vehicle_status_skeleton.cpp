@@ -14,7 +14,6 @@ namespace application
     {
         namespace
         {
-            const std::string cNicIpAddress{"127.0.0.1"};
             const uint16_t cTelematicEventId{0x8001};
         }
 
@@ -59,6 +58,22 @@ namespace application
 
             const auto cMulticastPort{cMulticastPortNode.GetValue<uint16_t>()};
             const auto cMulticastIp{cMulticastIpNode.GetValue<std::string>()};
+
+            // Read NIC IP from the COMMUNICATION-CLUSTER element so multicast
+            // is sent on the correct network interface (not hardcoded loopback).
+            const arxml::ArxmlNode cNicIpNode{
+                cReader.GetRootNode({"AUTOSAR",
+                                     "AR-PACKAGES",
+                                     "AR-PACKAGE",
+                                     "ELEMENTS",
+                                     "COMMUNICATION-CLUSTER",
+                                     "ETHERNET-PHYSICAL-CHANNEL",
+                                     "NETWORK-ENDPOINTS",
+                                     "NETWORK-ENDPOINT",
+                                     "NETWORK-ENDPOINT-ADDRESSES",
+                                     "IPV-4-CONFIGURATION",
+                                     "IPV-4-ADDRESS"})};
+            const auto cNicIpAddress{cNicIpNode.GetValue<std::string>()};
 
             mNetworkLayer =
                 new ara::com::someip::sd::SdNetworkLayer(

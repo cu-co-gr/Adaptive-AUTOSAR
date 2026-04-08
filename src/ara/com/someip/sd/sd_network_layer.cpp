@@ -53,8 +53,7 @@ namespace ara
                     ssize_t _receivedSize{
                         mUdpSocket.Receive(_buffer, _ipAddress, _port)};
 
-                    if (_receivedSize > 0 &&
-                        _port == cPort && _ipAddress == cNicIpAddress)
+                    if (_receivedSize > 0 && _port == cPort)
                     {
                         // SOME/IP-SD messages have Service ID = 0xFFFF.
                         // Event notifications (Service ID != 0xFFFF) share the

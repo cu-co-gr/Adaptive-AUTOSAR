@@ -13,6 +13,21 @@
         <AR-PACKAGE>
             <SHORT-NAME>WatchdogManifest</SHORT-NAME>
             <ELEMENTS>
+                <COMMUNICATION-CLUSTER>
+                    <ETHERNET-PHYSICAL-CHANNEL>
+                        <SHORT-NAME>WatchdogNetwork</SHORT-NAME>
+                        <NETWORK-ENDPOINTS>
+                            <NETWORK-ENDPOINT>
+                                <SHORT-NAME>WatchdogEP</SHORT-NAME>
+                                <NETWORK-ENDPOINT-ADDRESSES>
+                                    <IPV-4-CONFIGURATION>
+                                        <IPV-4-ADDRESS>192.168.1.94</IPV-4-ADDRESS>
+                                    </IPV-4-CONFIGURATION>
+                                </NETWORK-ENDPOINT-ADDRESSES>
+                            </NETWORK-ENDPOINT>
+                        </NETWORK-ENDPOINTS>
+                    </ETHERNET-PHYSICAL-CHANNEL>
+                </COMMUNICATION-CLUSTER>
                 <REQUIRED-SOMEIP-SERVICE-INSTANCE>
                     <SERVICE-INTERFACE-DEPLOYMENT>
                         <SERVICE-INTERFACE-ID>5</SERVICE-INTERFACE-ID>

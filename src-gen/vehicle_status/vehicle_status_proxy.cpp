@@ -11,11 +11,6 @@ namespace application
 {
     namespace vehicle_status
     {
-        namespace
-        {
-            const std::string cNicIpAddress{"127.0.0.1"};
-        }
-
         VehicleStatusProxy::VehicleStatusProxy(
             AsyncBsdSocketLib::Poller *poller,
             const std::string &manifestPath)
@@ -109,9 +104,24 @@ namespace application
             mSelfInstanceId = cSelfInstanceIdNode.GetValue<uint16_t>();
             mPeerInstanceId = cInstanceId;
 
+            // Read NIC IP so multicast binds to the correct network interface.
+            const arxml::ArxmlNode cNicIpNode{
+                cReader.GetRootNode({"AUTOSAR",
+                                     "AR-PACKAGES",
+                                     "AR-PACKAGE",
+                                     "ELEMENTS",
+                                     "COMMUNICATION-CLUSTER",
+                                     "ETHERNET-PHYSICAL-CHANNEL",
+                                     "NETWORK-ENDPOINTS",
+                                     "NETWORK-ENDPOINT",
+                                     "NETWORK-ENDPOINT-ADDRESSES",
+                                     "IPV-4-CONFIGURATION",
+                                     "IPV-4-ADDRESS"})};
+            const auto cNicIp{cNicIpNode.GetValue<std::string>()};
+
             mSdNetworkLayer =
                 new ara::com::someip::sd::SdNetworkLayer(
-                    mPoller, cNicIpAddress, cMulticastIp, cMulticastPort);
+                    mPoller, cNicIp, cMulticastIp, cMulticastPort);
 
             mSdClient =
                 new ara::com::someip::pubsub::SomeIpPubSubClient(
@@ -133,7 +143,7 @@ namespace application
 
             mEventReceiver =
                 new ara::com::someip::pubsub::PubSubEventReceiver(
-                    mPoller, cNicIpAddress, cMulticastIp, cMulticastPort,
+                    mPoller, cNicIp, cMulticastIp, cMulticastPort,
                     std::move(_callback));
 
             mSdClient->Subscribe(
