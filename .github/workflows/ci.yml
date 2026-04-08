@@ -89,11 +89,27 @@ jobs:
       - name: Install dependencies + ARM64 cross-compiler
         run: |
           sudo dpkg --add-architecture arm64
-          sudo sed -i 's/^deb /deb [arch=amd64] /' /etc/apt/sources.list
-          echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy main restricted universe multiverse" \
-            | sudo tee -a /etc/apt/sources.list
-          echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-updates main restricted universe multiverse" \
-            | sudo tee -a /etc/apt/sources.list
+          # Pin all existing sources to [arch=amd64] so apt-get update does
+          # not try to fetch arm64 packages from the amd64-only mirrors.
+          # Handle both traditional one-line format (sources.list / *.list)
+          # and DEB822 format (*.sources) used on newer runner images.
+          sudo sed -i '/^\s*deb\s/{/\[arch=/!s/deb /deb [arch=amd64] /}' \
+            /etc/apt/sources.list 2>/dev/null || true
+          for f in /etc/apt/sources.list.d/*.list; do
+            [ -f "$f" ] && sudo sed -i \
+              '/^\s*deb\s/{/\[arch=/!s/deb /deb [arch=amd64] /}' "$f" || true
+          done
+          for f in /etc/apt/sources.list.d/*.sources; do
+            [ -f "$f" ] && sudo sed -i \
+              's/^Architectures:.*/Architectures: amd64/' "$f" \
+              || true
+          done
+          # Add arm64 sources from the Ubuntu ports mirror.
+          printf '%s\n' \
+            'deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy main restricted universe multiverse' \
+            'deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-updates main restricted universe multiverse' \
+            'deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-security main restricted universe multiverse' \
+            | sudo tee /etc/apt/sources.list.d/arm64-ports.list
           sudo apt-get update
           sudo apt-get install -y \
             gcc-aarch64-linux-gnu \

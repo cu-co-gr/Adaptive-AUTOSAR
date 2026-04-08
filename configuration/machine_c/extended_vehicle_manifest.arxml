@@ -24,7 +24,7 @@
                                 <SHORT-NAME>ExtendedVehicleEP</SHORT-NAME>
                                 <NETWORK-ENDPOINT-ADDRESSES>
                                     <IPV-4-CONFIGURATION>
-                                        <IPV-4-ADDRESS>192.168.68.64</IPV-4-ADDRESS>
+                                        <IPV-4-ADDRESS>192.168.1.96</IPV-4-ADDRESS>
                                     </IPV-4-CONFIGURATION>
                                 </NETWORK-ENDPOINT-ADDRESSES>
                             </NETWORK-ENDPOINT>
