@@ -51,10 +51,16 @@ Note that configuration\machine_c\execution_manifest.arxml stablish relative pat
 
 4. CMakeLists.txt is now patching the fetched `async-bsd-socket-lib` dependency (`fifo_sender.h`, `fifo_receiver.h`).
    This is needed for build-aarch64. We will need to figure out if this library should be replaced according to AUTOSAR OS Interface specs. 
-   Otherwise we probably want to fix the changes in the async-bsd-socket-lib repo.  
+   Otherwise we probably want to fix the changes in the async-bsd-socket-lib repo.   
 
-5. We need to bring up github actions to have both builds clean.  
-
-6. after deployment in UNOQ is clean. We will have to try and bugfix cross machine communication , IP, ports etc. Also figure out bus monitoring and functional test.  At this point we probably will need to deal with Network management. Here is where extending AP capabilities will become a topic again.  
-
+6. [DONE] Reconfigured three-machine topology:
+   - Machine C (UNOQ, 192.168.68.64): EV heartbeat provider, service 5 instance 2.
+     No WatchdogApplication. Start with: scripts/run_machine_c.sh (on the UNOQ).
+   - Machine A (Linux server, RPC :18080): WA instance 0, subscribes to Machine C EV.
+     No ExtendedVehicle process. Start with: scripts/run_machine_a.sh.
+   - Machine B (Linux server, RPC :18081): WA instance 1, subscribes to Machine C EV.
+     No ExtendedVehicle process. Start with: scripts/run_machine_b.sh.
+   - run_demo.sh starts A + B; Machine C must already be running on UNOQ.
+   - test_watchdog_event.sh checks both A and B WA subscribe to instance 2 and
+     receive heartbeats. Watchdog-fires test is manual (stop Machine C on UNOQ).
 

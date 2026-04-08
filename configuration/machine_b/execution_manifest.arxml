@@ -77,22 +77,6 @@
                         </FUNCTION-GROUP-STATE-IREFS>
                     </PROCESS>
                     <PROCESS>
-                        <SHORT-NAME>ExtendedVehicle</SHORT-NAME>
-                        <EXECUTABLE-PATH>./build/bin/extended_vehicle</EXECUTABLE-PATH>
-                        <BOOTSTRAP>false</BOOTSTRAP>
-                        <FIFO-PATH>/tmp/fifo_18081</FIFO-PATH>
-                        <PROCESS-ARGUMENTS>
-                            <PROCESS-ARGUMENT>./configuration/machine_b/execution_manifest.arxml</PROCESS-ARGUMENT>
-                            <PROCESS-ARGUMENT>./configuration/machine_b/extended_vehicle_manifest.arxml</PROCESS-ARGUMENT>
-                        </PROCESS-ARGUMENTS>
-                        <FUNCTION-GROUP-STATE-IREFS>
-                            <FUNCTION-GROUP-STATE-IREF>
-                                <FUNCTION-GROUP-REF>MachineFG</FUNCTION-GROUP-REF>
-                                <FUNCTION-GROUP-STATE-REF>StartUp</FUNCTION-GROUP-STATE-REF>
-                            </FUNCTION-GROUP-STATE-IREF>
-                        </FUNCTION-GROUP-STATE-IREFS>
-                    </PROCESS>
-                    <PROCESS>
                         <SHORT-NAME>DiagnosticManager</SHORT-NAME>
                         <EXECUTABLE-PATH>./build/bin/diagnostic_manager</EXECUTABLE-PATH>
                         <BOOTSTRAP>false</BOOTSTRAP>

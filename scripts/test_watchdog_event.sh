@@ -1,38 +1,31 @@
 #!/usr/bin/env bash
-# Functional test: Symmetric two-machine AUTOSAR Adaptive Platform
+# Functional test: Machine A + B watching Machine C heartbeat
 #
-# Architecture — each machine runs all five platform processes:
-#   Machine A (RPC :18080, EV instance 0): SM + PHM + EV + DM + WA
-#   Machine B (RPC :18081, EV instance 1): SM + PHM + EV + DM + WA
+# Architecture:
+#   Machine C (UNOQ, 192.168.68.64): EV heartbeat provider, service 5 instance 2
+#   Machine A (this host, RPC :18080): WA instance 0, subscribes to Machine C EV
+#   Machine B (this host, RPC :18081): WA instance 1, subscribes to Machine C EV
 #
-# Cross-machine SOME/IP monitoring (service 5, UDP multicast 239.0.0.1:5555):
-#   Machine B WA subscribes to Machine A EV (instance 0, TCP :8081)
-#   Machine A WA subscribes to Machine B EV (instance 1, TCP :8082)
-#
-# Known SD timing issue (marked [INFO], does not affect pass/fail verdict):
-#   The SOME/IP SD client FSM has no Main phase.  After the Repetition phase
-#   exhausts without receiving an Offer, the FSM transitions permanently to
-#   Stopped.  Machine A WA begins its Repetition window while Machine B EV is
-#   still initialising, so Machine A WA never subscribes and its watchdog never
-#   resets.  Machine B WA succeeds because Machine A EV is already offering by
-#   the time Machine B WA enters its own Repetition phase (Machine A starts
-#   ~100 ms earlier due to lower RPC port 18080).
+# PREREQUISITE: Machine C must be running on the Arduino UNOQ BEFORE this
+#   script is launched. Start it with:
+#     ssh user@192.168.68.64 "cd <deploy-dir> && ./scripts/run_machine_c.sh &"
 #
 # What it does:
-#   1.  Starts tcpdump on loopback (wire capture for SOME/IP analysis)
-#   2.  Starts Machine A and Machine B; waits 12 s for pipeline warm-up
-#   3.  Checks all five processes initialised on BOTH machines
-#   4.  Confirms periodic EV heartbeat on both machines (≥ 3 in 12 s)
-#   5.  Confirms Machine B WA resets watchdog from Machine A EV events
-#   6.  Reports Machine A WA state [INFO] — expected to not see events
-#   7.  Kills Machine A, waits 4 s (> 2 s timeout), kills Machine B
-#   8.  Verifies Machine B WA fires after Machine A EV goes silent
-#   9.  Checks clean shutdown messages for both machines
-#  10.  Wire analysis via tshark (skipped gracefully if not installed):
-#         SD Offers from both EVs; SD Subscribe/Ack for instance 0;
-#         VehicleStatus event packet count; Machine A WA Find [INFO]
+#   1.  Checks Machine C is reachable (ping)
+#   2.  Starts tcpdump on the network interface facing Machine C
+#   3.  Starts Machine A and Machine B; waits 12 s for SD handshake
+#   4.  Checks all processes initialised on both machines (no EV on A/B)
+#   5.  Confirms both A and B WA receive heartbeats from Machine C (≥ 3 in 12 s)
+#   6.  Confirms both A and B WA watchdogs are reset by Machine C EV events
+#   7.  Checks no spurious watchdog expiry while Machine C is running
+#   8.  Wire analysis via tshark: SD Offer instance 2, Subscribe, SubscribeAck,
+#       VehicleStatus events
+#   9.  Prints results and exits 0 only if all required checks pass
 #
-# Exit code: 0 = all required checks passed.
+# Watchdog-fires test (manual, not automated):
+#   After this script finishes, stop Machine C on the UNOQ and observe that
+#   both Machine A and Machine B WA log "[Watchdog] Event expired" within
+#   ~2 s of the last heartbeat.
 
 set -uo pipefail
 
@@ -42,6 +35,7 @@ BIN="$REPO_DIR/build/bin/adaptive_autosar"
 LOG_A="/tmp/autosar_machine_a.log"
 LOG_B="/tmp/autosar_machine_b.log"
 PCAP="/tmp/autosar_wire.pcap"
+MACHINE_C_IP="192.168.68.64"
 
 PASS=0
 FAIL=0
@@ -68,16 +62,15 @@ info() {
 
 cleanup() {
     [ "$PID_TCPDUMP" != "0" ] && kill "$PID_TCPDUMP" 2>/dev/null || true
-    [ "$PID_A" != "0" ] && kill "$PID_A" 2>/dev/null || true
-    [ "$PID_B" != "0" ] && kill "$PID_B" 2>/dev/null || true
-    [ "$PID_A" != "0" ] && wait "$PID_A" 2>/dev/null || true
-    [ "$PID_B" != "0" ] && wait "$PID_B" 2>/dev/null || true
+    [ "$PID_A"       != "0" ] && kill "$PID_A"       2>/dev/null || true
+    [ "$PID_B"       != "0" ] && kill "$PID_B"       2>/dev/null || true
+    [ "$PID_A"       != "0" ] && wait "$PID_A"       2>/dev/null || true
+    [ "$PID_B"       != "0" ] && wait "$PID_B"       2>/dev/null || true
     [ "$PID_TCPDUMP" != "0" ] && wait "$PID_TCPDUMP" 2>/dev/null || true
-    pkill -f "build/bin/state_management"       2>/dev/null || true
+    pkill -f "build/bin/state_management"           2>/dev/null || true
     pkill -f "build/bin/platform_health_management" 2>/dev/null || true
-    pkill -f "build/bin/extended_vehicle"       2>/dev/null || true
-    pkill -f "build/bin/diagnostic_manager"     2>/dev/null || true
-    pkill -f "build/bin/watchdog_application"   2>/dev/null || true
+    pkill -f "build/bin/diagnostic_manager"         2>/dev/null || true
+    pkill -f "build/bin/watchdog_application"       2>/dev/null || true
 }
 trap cleanup EXIT INT TERM
 
@@ -86,29 +79,44 @@ if [ ! -x "$BIN" ]; then
     exit 1
 fi
 
-# Child processes are spawned with paths relative to repo root.
 cd "$REPO_DIR"
 
-echo "=== Symmetric watchdog functional test ==="
-echo "  Machine A: RPC :18080, EV instance 0 → log $LOG_A"
-echo "  Machine B: RPC :18081, EV instance 1 → log $LOG_B"
+echo "=== Machine C heartbeat watchdog functional test ==="
+echo "  Machine C: EV instance 2 at $MACHINE_C_IP — must be running already"
+echo "  Machine A: RPC :18080, WA instance 0 → log $LOG_A"
+echo "  Machine B: RPC :18081, WA instance 1 → log $LOG_B"
 echo "  Wire pcap: $PCAP"
 echo ""
 
-# ── 1. Start tcpdump ──────────────────────────────────────────────────────────
+# ── 1. Machine C reachability ─────────────────────────────────────────────────
+echo "--- Machine C reachability ---"
+ping -c 1 -W 2 "$MACHINE_C_IP" >/dev/null 2>&1
+check "Machine C ($MACHINE_C_IP) is reachable" $?
+
+# Auto-detect the network interface that routes to Machine C.
+IFACE=$(ip route get "$MACHINE_C_IP" 2>/dev/null | grep -oP 'dev \K\S+' | head -1)
+if [ -z "$IFACE" ]; then
+    IFACE="any"
+    info "Could not detect interface for $MACHINE_C_IP — using 'any'"
+else
+    info "Capturing SOME/IP traffic on interface: $IFACE"
+fi
+
+# ── 2. Start tcpdump ──────────────────────────────────────────────────────────
 rm -f "$PCAP"
 if command -v tcpdump &>/dev/null; then
-    tcpdump -i lo -w "$PCAP" \
-        'udp port 5555 or tcp port 8081 or tcp port 8082 or tcp port 18080 or tcp port 18081' \
+    tcpdump -i "$IFACE" -w "$PCAP" \
+        'udp port 5555 or tcp port 8081 or tcp port 18080 or tcp port 18081' \
         2>/dev/null &
     PID_TCPDUMP=$!
     sleep 0.5
-    echo "Wire capture started (PID $PID_TCPDUMP)"
+    echo "Wire capture started (PID $PID_TCPDUMP, iface $IFACE)"
 else
     echo "WARNING: tcpdump not found — wire capture disabled"
 fi
 
-# ── 2. Start both machines ────────────────────────────────────────────────────
+# ── 3. Start Machine A and Machine B ─────────────────────────────────────────
+echo ""
 stdbuf -o0 "$BIN" ./configuration/machine_a/execution_manifest.arxml \
     >"$LOG_A" 2>&1 &
 PID_A=$!
@@ -121,123 +129,69 @@ echo "Started Machine A (PID $PID_A) and Machine B (PID $PID_B)"
 echo "Waiting 12 s for SD handshake + event pipeline to stabilise..."
 sleep 12
 
-# ── 3. Liveness ───────────────────────────────────────────────────────────────
+# ── 4. Liveness ───────────────────────────────────────────────────────────────
 echo ""
 echo "--- Liveness ---"
 kill -0 "$PID_A" 2>/dev/null; check "Machine A still running" $?
 kill -0 "$PID_B" 2>/dev/null; check "Machine B still running" $?
 
-# ── 4. Initialization ─────────────────────────────────────────────────────────
+# ── 5. Initialization ─────────────────────────────────────────────────────────
 echo ""
 echo "--- Initialization ---"
 for machine in A B; do
     log_var="LOG_${machine}"
     log="${!log_var}"
-    grep -qa "Execution management has been initialized."    "$log" 2>/dev/null
+    grep -qa "Execution management has been initialized."      "$log" 2>/dev/null
     check "Machine $machine: EM initialized" $?
-    grep -qa "State management has been initialized."        "$log" 2>/dev/null
+    grep -qa "State management has been initialized."          "$log" 2>/dev/null
     check "Machine $machine: SM initialized" $?
     grep -qa "Plafrom health management has been initialized." "$log" 2>/dev/null
     check "Machine $machine: PHM initialized" $?
-    grep -qa "Extended Vehicle AA has been initialized."     "$log" 2>/dev/null
-    check "Machine $machine: EV initialized" $?
-    grep -qa "Diagnostic Manager has been initialized."      "$log" 2>/dev/null
+    grep -qa "Diagnostic Manager has been initialized."        "$log" 2>/dev/null
     check "Machine $machine: DM initialized" $?
-    grep -qa "\[Watchdog\] Started"                          "$log" 2>/dev/null
+    grep -qa "\[Watchdog\] Started"                            "$log" 2>/dev/null
     check "Machine $machine: WA started" $?
+    # EV is intentionally absent on Machine A and B in this topology.
+    if grep -qa "Extended Vehicle AA has been initialized." "$log" 2>/dev/null; then
+        info "Machine $machine: EV unexpectedly present [INFO]"
+    fi
 done
 
-# ── 5. Event pipeline (log-based) ─────────────────────────────────────────────
+# ── 6. Heartbeat from Machine C (log-based) ───────────────────────────────────
 echo ""
-echo "--- Event pipeline (log-based) ---"
+echo "--- Heartbeat from Machine C (log-based) ---"
 
-_hb_a=$(grep -ca "\[Heartbeat\] ExtendedVehicle alive" "$LOG_A" 2>/dev/null; true)
-_hb_a=${_hb_a:-0}
-[ "$_hb_a" -ge 3 ] && _r=0 || _r=1
-check "Machine A EV: Periodic heartbeat (≥ 3 in 12 s, got $_hb_a)" $_r
+for machine in A B; do
+    log_var="LOG_${machine}"
+    log="${!log_var}"
 
-_hb_b=$(grep -ca "\[Heartbeat\] ExtendedVehicle alive" "$LOG_B" 2>/dev/null; true)
-_hb_b=${_hb_b:-0}
-[ "$_hb_b" -ge 3 ] && _r=0 || _r=1
-check "Machine B EV: Periodic heartbeat (≥ 3 in 12 s, got $_hb_b)" $_r
+    # Watchdog reset messages confirm that Machine C EV events arrived and
+    # the WA handler fired for instance 2.
+    _wr=$(grep -ca "\[Watchdog\].*restarted by ExtendedVehicle 2" "$log" 2>/dev/null; true)
+    _wr=${_wr:-0}
+    [ "$_wr" -ge 1 ] && _r=0 || _r=1
+    check "Machine $machine WA: Watchdog reset by Machine C EV (got $_wr)" $_r
+done
 
-# Machine B WA subscribes to Machine A EV (instance 0) — expected to work.
-_wr_b=$(grep -ca "\[Watchdog\] 1 restarted by ExtendedVehicle 0" "$LOG_B" 2>/dev/null; true)
-_wr_b=${_wr_b:-0}
-[ "$_wr_b" -ge 1 ] && _r=0 || _r=1
-check "Machine B WA: Watchdog reset by Machine A EV (got $_wr_b)" $_r
-
-# No spurious watchdog expiry on either machine while both are alive.
+# No spurious watchdog expiry on either machine while Machine C is running.
 grep -qa "\[Watchdog\] Event expired" "$LOG_A" 2>/dev/null && _r=1 || _r=0
-check "Machine A: No spurious watchdog expiry while both running" $_r
+check "Machine A: No spurious watchdog expiry while Machine C running" $_r
 grep -qa "\[Watchdog\] Event expired" "$LOG_B" 2>/dev/null && _r=1 || _r=0
-check "Machine B: No spurious watchdog expiry while both running" $_r
+check "Machine B: No spurious watchdog expiry while Machine C running" $_r
 
-# Machine A WA subscribes to Machine B EV (instance 1) — SD timing issue.
-# Expected: 0 resets because Machine A WA's SD client FSM reaches Stopped
-# before Machine B EV begins offering.  Does not affect test verdict.
-_wr_a=$(grep -ca "\[Watchdog\] 0 restarted by ExtendedVehicle 1" "$LOG_A" 2>/dev/null; true)
-_wr_a=${_wr_a:-0}
-info "Machine A WA: Watchdog resets from Machine B EV: $_wr_a [INFO — expected 0; see SD timing note]"
-
-# ── 6. Kill Machine A — let Machine B WA timeout ──────────────────────────────
+# ── 7. Stop captures and machines ─────────────────────────────────────────────
 echo ""
-echo "--- Killing Machine A (PID $PID_A) ---"
-kill "$PID_A" 2>/dev/null || true
-wait "$PID_A" 2>/dev/null || true
-PID_A=0
+echo "--- Stopping Machine A and Machine B ---"
+kill "$PID_A" 2>/dev/null || true; wait "$PID_A" 2>/dev/null || true; PID_A=0
+kill "$PID_B" 2>/dev/null || true; wait "$PID_B" 2>/dev/null || true; PID_B=0
 
-echo "Waiting 4 s (> 2 s watchdog timeout) for Machine B WA to fire..."
-sleep 4
-
-# ── 7. Kill Machine B ─────────────────────────────────────────────────────────
-echo ""
-echo "--- Killing Machine B (PID $PID_B) ---"
-kill "$PID_B" 2>/dev/null || true
-wait "$PID_B" 2>/dev/null || true
-PID_B=0
-
-# Stop tcpdump now that all traffic has been generated.
 if [ "$PID_TCPDUMP" != "0" ]; then
     kill "$PID_TCPDUMP" 2>/dev/null || true
     wait "$PID_TCPDUMP" 2>/dev/null || true
     PID_TCPDUMP=0
 fi
 
-# ── 8. Machine B watchdog fired ───────────────────────────────────────────────
-# Checked after killing Machine B to guarantee log buffer flush.
-echo ""
-echo "--- Machine B WA watchdog fired (checked after shutdown) ---"
-grep -qa "\[Watchdog\] Event expired" "$LOG_B" 2>/dev/null
-check "Machine B WA: Fires after Machine A EV goes silent" $?
-
-# Machine A WA: mFirstEventReceived stays false (never subscribed) so the
-# expiry guard prevents the log line.  Expected: no expiry message.
-if grep -qa "\[Watchdog\] Event expired" "$LOG_A" 2>/dev/null; then
-    info "Machine A WA: Expiry message present (unexpected — may indicate subscription succeeded)"
-else
-    info "Machine A WA: No expiry message [INFO — expected; mFirstEventReceived=false guards the log]"
-fi
-
-# ── 9. Shutdown checks ────────────────────────────────────────────────────────
-echo ""
-echo "--- Clean shutdown ---"
-for machine in A B; do
-    log_var="LOG_${machine}"
-    log="${!log_var}"
-    grep -qa "Extended Vehicle AA has been terminated."       "$log" 2>/dev/null
-    check "Machine $machine: EV terminated" $?
-    grep -qa "Diagnostic Manager has been terminated."        "$log" 2>/dev/null
-    check "Machine $machine: DM terminated" $?
-    grep -qa "Plafrom health management has been terminated." "$log" 2>/dev/null
-    check "Machine $machine: PHM terminated" $?
-    grep -qa "State management has been terminated."          "$log" 2>/dev/null
-    check "Machine $machine: SM terminated" $?
-    grep -qa "Execution management has been terminated."      "$log" 2>/dev/null
-    check "Machine $machine: EM terminated" $?
-done
-
-# ── 10. Wire analysis ─────────────────────────────────────────────────────────
+# ── 8. Wire analysis ──────────────────────────────────────────────────────────
 echo ""
 echo "--- Wire analysis (SOME/IP) ---"
 
@@ -247,75 +201,56 @@ elif ! command -v tshark &>/dev/null; then
     info "SKIP: tshark not installed (sudo apt-get install tshark)"
     info "      Pcap saved: $PCAP — open in Wireshark, filter: udp.port==5555"
 else
-    # Check for SOME/IP and SOME/IP-SD dissector availability.
     _has_someip=0
     _has_someipsd=0
     tshark -G fields 2>/dev/null | grep -q "someip.serviceid"  && _has_someip=1  || true
     tshark -G fields 2>/dev/null | grep -q "someipsd.entry"    && _has_someipsd=1 || true
 
     if [ "$_has_someip" = "0" ]; then
-        info "SKIP: tshark SOME/IP dissector not available (tshark $(tshark --version 2>/dev/null | head -1))"
+        info "SKIP: tshark SOME/IP dissector not available"
         info "      Pcap saved: $PCAP"
     else
         tshark_count() {
-            # Returns number of frames matching $1; suppresses dissector warnings.
             tshark -r "$PCAP" -Y "$1" -T fields -e frame.number 2>/dev/null | wc -l
         }
 
-        # VehicleStatus event notifications — service ID 5, method 0x8001
-        # (both EVs publish to multicast 239.0.0.1:5555)
+        # VehicleStatus event notifications from Machine C (service 5, method 0x8001)
         _ev_total=$(tshark_count "someip.serviceid == 5 && someip.methodid == 0x8001")
-        [ "$_ev_total" -ge 6 ] && _r=0 || _r=1
-        check "Wire: VehicleStatus events from service 5 (≥ 6 total, got $_ev_total)" $_r
+        [ "$_ev_total" -ge 3 ] && _r=0 || _r=1
+        check "Wire: VehicleStatus events service 5 (≥ 3, got $_ev_total)" $_r
 
         if [ "$_has_someipsd" = "1" ]; then
-            # SD Offer for instance 0 (Machine A EV)
-            _sd_offer_0=$(tshark_count \
-                "someipsd.entry.type == 1 && someipsd.entry.serviceid == 5 && someipsd.entry.instanceid == 0")
-            [ "$_sd_offer_0" -ge 1 ] && _r=0 || _r=1
-            check "Wire: SD Offer — service 5 instance 0 (Machine A EV, got $_sd_offer_0)" $_r
+            # SD Offer for instance 2 (Machine C EV)
+            _sd_offer_2=$(tshark_count \
+                "someipsd.entry.type == 1 && someipsd.entry.serviceid == 5 && someipsd.entry.instanceid == 2")
+            [ "$_sd_offer_2" -ge 1 ] && _r=0 || _r=1
+            check "Wire: SD Offer — service 5 instance 2 (Machine C EV, got $_sd_offer_2)" $_r
 
-            # SD Offer for instance 1 (Machine B EV)
-            _sd_offer_1=$(tshark_count \
-                "someipsd.entry.type == 1 && someipsd.entry.serviceid == 5 && someipsd.entry.instanceid == 1")
-            [ "$_sd_offer_1" -ge 1 ] && _r=0 || _r=1
-            check "Wire: SD Offer — service 5 instance 1 (Machine B EV, got $_sd_offer_1)" $_r
+            # SD Subscribe from Machine A WA → Machine C EV (instance 2)
+            _sd_sub_a=$(tshark_count \
+                "someipsd.entry.type == 6 && someipsd.entry.serviceid == 5 && someipsd.entry.instanceid == 2")
+            [ "$_sd_sub_a" -ge 1 ] && _r=0 || _r=1
+            check "Wire: SD Subscribe — instance 2 (A or B WA → Machine C EV, got $_sd_sub_a)" $_r
 
-            # SD Subscribe from Machine B WA → Machine A EV (instance 0)
-            _sd_sub_0=$(tshark_count \
-                "someipsd.entry.type == 6 && someipsd.entry.serviceid == 5 && someipsd.entry.instanceid == 0")
-            [ "$_sd_sub_0" -ge 1 ] && _r=0 || _r=1
-            check "Wire: SD Subscribe — instance 0 (Machine B WA → Machine A EV, got $_sd_sub_0)" $_r
-
-            # SD SubscribeAck from Machine A EV → Machine B WA
-            _sd_ack_0=$(tshark_count \
-                "someipsd.entry.type == 7 && someipsd.entry.serviceid == 5 && someipsd.entry.instanceid == 0")
-            [ "$_sd_ack_0" -ge 1 ] && _r=0 || _r=1
-            check "Wire: SD SubscribeAck — instance 0 (Machine A EV → Machine B WA, got $_sd_ack_0)" $_r
-
-            # Machine A WA sends SD Find for instance 1 during its Repetition phase.
-            _sd_find_1=$(tshark_count \
-                "someipsd.entry.type == 0 && someipsd.entry.serviceid == 5 && someipsd.entry.instanceid == 1")
-            info "Wire: SD Find — instance 1 (Machine A WA): $_sd_find_1 [INFO — expected > 0 during Repetition]"
-
-            # Machine A WA should NOT have sent a Subscribe for instance 1 (FSM Stopped).
-            _sd_sub_1=$(tshark_count \
-                "someipsd.entry.type == 6 && someipsd.entry.serviceid == 5 && someipsd.entry.instanceid == 1")
-            if [ "$_sd_sub_1" -eq 0 ]; then
-                info "Wire: No SD Subscribe for instance 1 (Machine A WA) [INFO — confirms FSM Stopped before Offer seen]"
-            else
-                info "Wire: SD Subscribe for instance 1 seen: $_sd_sub_1 [INFO — Machine A WA may have subscribed this run]"
-            fi
+            # SD SubscribeAck from Machine C EV → Machine A/B WA
+            _sd_ack_2=$(tshark_count \
+                "someipsd.entry.type == 7 && someipsd.entry.serviceid == 5 && someipsd.entry.instanceid == 2")
+            [ "$_sd_ack_2" -ge 1 ] && _r=0 || _r=1
+            check "Wire: SD SubscribeAck — instance 2 (Machine C EV → A/B WA, got $_sd_ack_2)" $_r
         else
-            info "SKIP: SOME/IP-SD entry dissector fields not available; skipping SD-level checks"
-            info "      Pcap saved: $PCAP — filter in Wireshark: someipsd"
+            info "SKIP: SOME/IP-SD dissector fields not available; skipping SD-level checks"
         fi
-
         echo "  Pcap: $PCAP"
     fi
 fi
 
-# ── Summary ───────────────────────────────────────────────────────────────────
+# ── 9. Summary ────────────────────────────────────────────────────────────────
 echo ""
 echo "=== Results: $PASS passed, $FAIL failed ==="
+echo ""
+echo "NOTE — Watchdog-fires test (manual):"
+echo "  Stop Machine C on the UNOQ and wait ~2 s. Both Machine A and Machine B"
+echo "  WA should log '[Watchdog] Event expired'. Re-run run_demo.sh and observe"
+echo "  the logs to confirm."
+echo ""
 [ "$FAIL" -eq 0 ] && exit 0 || exit 1

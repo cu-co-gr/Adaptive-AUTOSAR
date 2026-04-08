@@ -2,11 +2,11 @@
 <!--
     §3.10.2.6  Service Instance Manifest — WatchdogApplication (Machine B)
 
-    Machine B watchdog subscribes to Machine A's ExtendedVehicle service
-    (Instance ID 0). Explicit instance ID ensures cross-machine monitoring only.
+    Machine B watchdog subscribes to Machine C's ExtendedVehicle heartbeat
+    service (Instance ID 2, IP 192.168.68.64).
 
     Consumed by: argument_configuration.cpp ("--watchdog" argument key)
-    C++ realisation: application::WatchdogApplication (PLANNED)
+    C++ realisation: application::WatchdogApplication
 -->
 <AUTOSAR xmlns="http://autosar.org/schema/r4.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://autosar.org/schema/r4.0 autosar_00050.xsd">
     <AR-PACKAGES>
@@ -34,8 +34,8 @@
                             <INITIAL-DELAY-MAX-VALUE>200</INITIAL-DELAY-MAX-VALUE>
                         </INITIAL-FIND-BEHAVIOR>
                     </SD-CLIENT-CONFIG>
-                    <!-- Machine B watches Machine A: Instance ID 0 -->
-                    <SERVICE-INSTANCE-ID>0</SERVICE-INSTANCE-ID>
+                    <!-- Machine B watches Machine C (UNOQ): Instance ID 2 -->
+                    <SERVICE-INSTANCE-ID>2</SERVICE-INSTANCE-ID>
                     <!-- Machine B is itself instance 1 -->
                     <WATCHDOG-INSTANCE-ID>1</WATCHDOG-INSTANCE-ID>
                 </REQUIRED-SOMEIP-SERVICE-INSTANCE>
