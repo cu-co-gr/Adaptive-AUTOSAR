@@ -15,8 +15,10 @@ namespace ara
                     AsyncBsdSocketLib::Poller *poller,
                     std::string nicIp,
                     std::string eventIp,
-                    uint16_t eventPort) : mEventIp{eventIp},
+                    uint16_t eventPort,
+                    std::vector<std::string> unicastPeers) : mEventIp{eventIp},
                                           mEventPort{eventPort},
+                                          mUnicastPeers{std::move(unicastPeers)},
                                           mPoller{poller},
                                           mUdpSocket{
                                               eventIp,
@@ -56,7 +58,17 @@ namespace ara
                                 _payload.size(),
                                 _buffer.begin());
 
-                            mUdpSocket.Send(_buffer, mEventIp, mEventPort);
+                            if (mUnicastPeers.empty())
+                            {
+                                mUdpSocket.Send(_buffer, mEventIp, mEventPort);
+                            }
+                            else
+                            {
+                                for (const auto &_peer : mUnicastPeers)
+                                {
+                                    mUdpSocket.Send(_buffer, _peer, mEventPort);
+                                }
+                            }
                         }
                     }
                 }

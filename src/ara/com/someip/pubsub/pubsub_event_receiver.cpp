@@ -17,9 +17,10 @@ namespace ara
                     std::string nicIp,
                     std::string multicastIp,
                     uint16_t multicastPort,
-                    std::function<void(const std::vector<uint8_t> &)> eventCallback) : mPoller{poller},
+                    std::function<void(const std::vector<uint8_t> &)> eventCallback,
+                    std::string bindIp) : mPoller{poller},
                                                            mUdpSocket{
-                                                               multicastIp,
+                                                               bindIp.empty() ? multicastIp : bindIp,
                                                                multicastPort,
                                                                nicIp,
                                                                multicastIp,

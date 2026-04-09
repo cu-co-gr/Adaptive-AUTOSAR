@@ -1,6 +1,8 @@
 #include "./vehicle_status_skeleton.h"
 
 #include <stdexcept>
+#include <string>
+#include <vector>
 #include "arxml/arxml_reader.h"
 #include "ara/com/someip/sd/sd_network_layer.h"
 #include "ara/com/someip/sd/someip_sd_server.h"
@@ -75,9 +77,31 @@ namespace application
                                      "IPV-4-ADDRESS"})};
             const auto cNicIpAddress{cNicIpNode.GetValue<std::string>()};
 
+            // ── Optional unicast SD peers ────────────────────────────────────
+            // When present, SD Offers and events are sent directly to each peer
+            // IP (unicast) instead of the multicast group. Enables operation
+            // across routers that do not forward multicast traffic.
+            std::vector<std::string> cUnicastPeers;
+            const arxml::ArxmlNodeRange cPeerNodes{
+                cReader.GetNodes({"AUTOSAR",
+                                  "AR-PACKAGES",
+                                  "AR-PACKAGE",
+                                  "ELEMENTS",
+                                  "PROVIDED-SOMEIP-SERVICE-INSTANCE",
+                                  "SD-SERVER-CONFIG",
+                                  "UNICAST-PEERS",
+                                  "UNICAST-PEER"})};
+            for (const arxml::ArxmlNode &_node : cPeerNodes)
+            {
+                std::string _ip{_node.GetValue<std::string>()};
+                if (!_ip.empty())
+                    cUnicastPeers.push_back(std::move(_ip));
+            }
+
             mNetworkLayer =
                 new ara::com::someip::sd::SdNetworkLayer(
-                    mPoller, cNicIpAddress, cMulticastIp, cMulticastPort);
+                    mPoller, cNicIpAddress, cMulticastIp, cMulticastPort,
+                    cUnicastPeers);
 
             // ── Service / instance identifiers ───────────────────────────────
             const arxml::ArxmlNode cServiceIdNode{
@@ -215,7 +239,8 @@ namespace application
 
             mEventLayer =
                 new ara::com::someip::pubsub::PubSubEventNetworkLayer(
-                    mPoller, cNicIpAddress, cMulticastIp, cMulticastPort);
+                    mPoller, cNicIpAddress, cMulticastIp, cMulticastPort,
+                    cUnicastPeers);
 
             mPubSubServer->SetEventLayer(mEventLayer);
         }

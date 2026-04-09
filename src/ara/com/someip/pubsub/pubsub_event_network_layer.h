@@ -5,6 +5,8 @@
 #include <asyncbsdsocket/udp_client.h>
 #include "../../helper/concurrent_queue.h"
 #include <stdexcept>
+#include <string>
+#include <vector>
 #include <cstdint>
 
 namespace ara
@@ -26,6 +28,7 @@ namespace ara
 
                     const std::string mEventIp;
                     const uint16_t mEventPort;
+                    const std::vector<std::string> mUnicastPeers;
                     helper::ConcurrentQueue<std::vector<uint8_t>> mSendingQueue;
                     AsyncBsdSocketLib::Poller *const mPoller;
                     AsyncBsdSocketLib::UdpClient mUdpSocket;
@@ -40,12 +43,15 @@ namespace ara
                     /// @param nicIp Network interface IP to use for multicast sending
                     /// @param eventIp Event multicast IP address
                     /// @param eventPort Event multicast UDP port
+                    /// @param unicastPeers Optional unicast subscriber IPs. When set,
+                    ///        events are sent directly to each peer instead of multicast.
                     /// @throws std::runtime_error if socket setup or poller registration fails
                     PubSubEventNetworkLayer(
                         AsyncBsdSocketLib::Poller *poller,
                         std::string nicIp,
                         std::string eventIp,
-                        uint16_t eventPort);
+                        uint16_t eventPort,
+                        std::vector<std::string> unicastPeers = {});
 
                     ~PubSubEventNetworkLayer();
 

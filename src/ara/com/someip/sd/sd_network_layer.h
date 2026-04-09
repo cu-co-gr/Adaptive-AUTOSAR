@@ -7,6 +7,8 @@
 #include "../../helper/network_layer.h"
 #include "./someip_sd_message.h"
 #include <stdexcept>
+#include <string>
+#include <vector>
 #include <cstdint>
 
 namespace ara
@@ -29,7 +31,8 @@ namespace ara
                     const std::string cNicIpAddress;
                     const std::string cMulticastGroup;
                     const uint16_t cPort;
-                    
+                    const std::vector<std::string> mUnicastPeers;
+
                     helper::ConcurrentQueue<std::vector<uint8_t>> mSendingQueue;
                     AsyncBsdSocketLib::Poller *const mPoller;
                     AsyncBsdSocketLib::UdpClient mUdpSocket;
@@ -43,12 +46,17 @@ namespace ara
                     /// @param nicIpAddress Network interface controller IPv4 address
                     /// @param multicastGroup Multicast group IPv4 address
                     /// @param port Multicast UDP port number
+                    /// @param unicastPeers Optional list of unicast peer IP addresses.
+                    ///        When non-empty, SD messages are sent directly to each
+                    ///        peer instead of the multicast group. Useful when the
+                    ///        network does not forward multicast between hosts.
                     /// @throws std::runtime_error Throws when the UDP socket configuration failed
                     SdNetworkLayer(
                         AsyncBsdSocketLib::Poller *poller,
                         std::string nicIpAddress,
                         std::string multicastGroup,
-                        uint16_t port);
+                        uint16_t port,
+                        std::vector<std::string> unicastPeers = {});
 
                     ~SdNetworkLayer() override;
 

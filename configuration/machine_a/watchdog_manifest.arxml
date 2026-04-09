@@ -48,6 +48,11 @@
                             <INITIAL-DELAY-MIN-VALUE>100</INITIAL-DELAY-MIN-VALUE>
                             <INITIAL-DELAY-MAX-VALUE>200</INITIAL-DELAY-MAX-VALUE>
                         </INITIAL-FIND-BEHAVIOR>
+                        <!-- Unicast SD peer: SD Finds are sent directly to Machine C.
+                             Required when the network does not forward multicast. -->
+                        <UNICAST-PEERS>
+                            <UNICAST-PEER>192.168.1.96</UNICAST-PEER>
+                        </UNICAST-PEERS>
                     </SD-CLIENT-CONFIG>
                     <!-- Machine A watches Machine C (UNOQ): Instance ID 2 -->
                     <SERVICE-INSTANCE-ID>2</SERVICE-INSTANCE-ID>

@@ -18,9 +18,11 @@ namespace ara
                     AsyncBsdSocketLib::Poller *poller,
                     std::string nicIpAddress,
                     std::string multicastGroup,
-                    uint16_t port) : cNicIpAddress{nicIpAddress},
+                    uint16_t port,
+                    std::vector<std::string> unicastPeers) : cNicIpAddress{nicIpAddress},
                                      cMulticastGroup{multicastGroup},
                                      cPort{port},
+                                     mUnicastPeers{std::move(unicastPeers)},
                                      mPoller{poller},
                                      mUdpSocket(cAnyIpAddress, port, nicIpAddress, multicastGroup)
                 {
@@ -91,7 +93,17 @@ namespace ara
                                 _payload.size(),
                                 _buffer.begin());
 
-                            mUdpSocket.Send(_buffer, cMulticastGroup, cPort);
+                            if (mUnicastPeers.empty())
+                            {
+                                mUdpSocket.Send(_buffer, cMulticastGroup, cPort);
+                            }
+                            else
+                            {
+                                for (const auto &_peer : mUnicastPeers)
+                                {
+                                    mUdpSocket.Send(_buffer, _peer, cPort);
+                                }
+                            }
                         }
                     }
                 }

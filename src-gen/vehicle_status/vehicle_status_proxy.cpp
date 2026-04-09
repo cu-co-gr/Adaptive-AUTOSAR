@@ -1,6 +1,8 @@
 #include "./vehicle_status_proxy.h"
 
 #include <functional>
+#include <string>
+#include <vector>
 #include "arxml/arxml_reader.h"
 #include "ara/com/someip/sd/sd_network_layer.h"
 #include "ara/com/someip/pubsub/someip_pubsub_client.h"
@@ -119,9 +121,31 @@ namespace application
                                      "IPV-4-ADDRESS"})};
             const auto cNicIp{cNicIpNode.GetValue<std::string>()};
 
+            // ── Optional unicast SD peers ─────────────────────────────────────
+            // When present, SD Finds are sent directly to the peer (unicast)
+            // instead of the multicast group, enabling operation across routers
+            // that do not forward multicast traffic.
+            std::vector<std::string> cUnicastPeers;
+            const arxml::ArxmlNodeRange cPeerNodes{
+                cReader.GetNodes({"AUTOSAR",
+                                  "AR-PACKAGES",
+                                  "AR-PACKAGE",
+                                  "ELEMENTS",
+                                  "REQUIRED-SOMEIP-SERVICE-INSTANCE",
+                                  "SD-CLIENT-CONFIG",
+                                  "UNICAST-PEERS",
+                                  "UNICAST-PEER"})};
+            for (const arxml::ArxmlNode &_node : cPeerNodes)
+            {
+                std::string _ip{_node.GetValue<std::string>()};
+                if (!_ip.empty())
+                    cUnicastPeers.push_back(std::move(_ip));
+            }
+
             mSdNetworkLayer =
                 new ara::com::someip::sd::SdNetworkLayer(
-                    mPoller, cNicIp, cMulticastIp, cMulticastPort);
+                    mPoller, cNicIp, cMulticastIp, cMulticastPort,
+                    cUnicastPeers);
 
             mSdClient =
                 new ara::com::someip::pubsub::SomeIpPubSubClient(
@@ -141,10 +165,17 @@ namespace application
                         mReceiveHandler(_data);
                 }};
 
+            // In unicast mode, bind the event receiver to 0.0.0.0 so it
+            // accepts both unicast packets (from cross-machine sender) and
+            // multicast packets (from same-host sender). In multicast-only
+            // mode, bind to the multicast group address as before.
+            const std::string cBindIp{
+                cUnicastPeers.empty() ? cMulticastIp : std::string{"0.0.0.0"}};
+
             mEventReceiver =
                 new ara::com::someip::pubsub::PubSubEventReceiver(
                     mPoller, cNicIp, cMulticastIp, cMulticastPort,
-                    std::move(_callback));
+                    std::move(_callback), cBindIp);
 
             mSdClient->Subscribe(
                 cServiceId, cInstanceId, cMajorVersion, cEventGroupId);

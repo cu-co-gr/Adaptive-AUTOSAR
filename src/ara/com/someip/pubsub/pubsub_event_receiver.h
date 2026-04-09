@@ -39,13 +39,17 @@ namespace ara
                     /// @param multicastIp Multicast group IP (e.g. "239.0.0.1")
                     /// @param multicastPort Multicast UDP port
                     /// @param eventCallback Callback invoked on every received packet
+                    /// @param bindIp Explicit socket bind address. Defaults to multicastIp
+                    ///        (standard multicast). Pass "0.0.0.0" to receive both
+                    ///        multicast and unicast packets on the same port.
                     /// @throws std::runtime_error if socket setup or poller registration fails
                     PubSubEventReceiver(
                         AsyncBsdSocketLib::Poller *poller,
                         std::string nicIp,
                         std::string multicastIp,
                         uint16_t multicastPort,
-                        std::function<void(const std::vector<uint8_t> &)> eventCallback);
+                        std::function<void(const std::vector<uint8_t> &)> eventCallback,
+                        std::string bindIp = "");
 
                     ~PubSubEventReceiver();
                 };
