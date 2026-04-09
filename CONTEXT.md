@@ -2,34 +2,30 @@
 In order to create and deploy adaptive applications in a way as close as possible to a commercial
 environment we need to expand capabilities of the Adaptive Platform (AP). In the big picture this
 means also to review APIs and Artifacts to be more complete and consistent with the AUTOSAR SWSs. 
-It also means that the AP should be deployable in an embedded target. 
+
+This file extends README.md providing further details, known limitations and TODOs.  Since my Linux experience is limited some topics might be too detailed.
+
+# 1. Annotations about MY development environment.
+  a. Visual Studio Code hosted in windows. repository and build hosted in Linux Server. SHH connection.
+  b. I am using Arduino UNOQ only for hosting and testing machine C. 
+  c. I was not able to set SSH connection between Linux server and Arduino UNOQ for file transfer.  This means that if I need to deploy a local build I have to do Linux server -> Windows -> UnoQ (Linux). For now this means I need to run the following command in UNOQ after the copy to allow execution
+    chmod +x ./build/bin/*  
+  d. Machine A and Machine B deployed in Linux Server. Machine C deployed in Arduino UNOQ. Ethernet connection is through usb (this is called USB Ethernet gadget or RNDIS/CDC-ECM).
+
+# 1.5 Common commands to remember 
+Unpacking in linux: tar xzf adaptive-autosar-aarch64.tar.gz
+Sniffing ethernet traffic in Linux: sudo tcpdump -i any -n host 192.168.2.96 
+Look for hung process in Linux: ps aux | grep "optional but useful"
+Then kill a hung process(PID):  kill -9 PID 
+Copy a folder and all its contents with ssh connection in powershell: scp -rf sourceuser@sourceIP destinationuser@destinationIP 
 
 
-## Build and deploy in Arduino UNO Q (aarch64-linux-gnu-gcc 14.2.0 (Debian)) a.k.a Machine C
+# 2. Stories 
+a. aarch64 deployment package includes dynamic libraries. In a real Adaptive Autosar workflow I believe these libraries are part of the machine configuration and/or part of the OS package. I need to understad further the related AUTOSAR Workflow and likley the OS configuration. For embedded Linux this brings me to try the Yocto project. 
 
-Configure command:
-```bash
-  cmake -DCMAKE_BUILD_TYPE=Debug\
-  -DCMAKE_TOOLCHAIN_FILE=cmake/aarch64-toolchain.cmake \
-  -Dbuild_tests=OFF \
-  -S . -B build-aarch64
-``` 
-Build command 
-```bash
-  cmake --build build-aarch64
-```
-Create deployment package 
-```bash
-  cmake --install build-aarch64 --prefix deploy/
-```
-Copy files to ArduinoUNOQ 
-deploy\*
-configuration\machine_c\*
+b. Now that we have two physical hosts, communication is fragile as it depends on manually starting the adaptive platform in both hosts.  This suggest the network management is likley the next functional objective.
 
-Note that deploy package has been created with execution permissions. use scp -p flag to copy permisions OR run chmod after the copy to permit execution 
-Note that configuration\machine_c\execution_manifest.arxml stablish relative paths to all binaries and configuration files. Make sure to honor the folder structure when copying
-
-
+c. In a real Adaptive Autosar workflow, deployment means to transfer/download executables and manifests. The AP should take care of installing and executing them.  Assuming this is close to the OTA concept of classic autosar, it includes diagnostic sessions and diagnostic routines for transfer. But it also requires the Configuration Manager Functional cluster.  
 
 ## TODOS
 
@@ -45,22 +41,15 @@ Note that configuration\machine_c\execution_manifest.arxml stablish relative pat
    to lower RPC port 18080). Fix options: (a) add SD Client Main phase that reacts to late
    Offers, or (b) increase Repetition timeout in watchdog manifest.
 
-3. Both machine_a and machine_b execution_manifest.arxml now have all five process entries
-   (SM, PHM, EV, DM, WA) — symmetric deployment confirmed. FIFO-PATH set to /tmp/fifo_18080
-   (Machine A) and /tmp/fifo_18081 (Machine B) for PHM and EV processes. WA has no FIFO-PATH.
-
 4. CMakeLists.txt is now patching the fetched `async-bsd-socket-lib` dependency (`fifo_sender.h`, `fifo_receiver.h`).
    This is needed for build-aarch64. We will need to figure out if this library should be replaced according to AUTOSAR OS Interface specs. 
    Otherwise we probably want to fix the changes in the async-bsd-socket-lib repo.   
 
-6. [DONE] Reconfigured three-machine topology:
-   - Machine C (UNOQ, 192.168.68.64): EV heartbeat provider, service 5 instance 2.
-     No WatchdogApplication. Start with: scripts/run_machine_c.sh (on the UNOQ).
-   - Machine A (Linux server, RPC :18080): WA instance 0, subscribes to Machine C EV.
-     No ExtendedVehicle process. Start with: scripts/run_machine_a.sh.
-   - Machine B (Linux server, RPC :18081): WA instance 1, subscribes to Machine C EV.
-     No ExtendedVehicle process. Start with: scripts/run_machine_b.sh.
-   - run_demo.sh starts A + B; Machine C must already be running on UNOQ.
-   - test_watchdog_event.sh checks both A and B WA subscribe to instance 2 and
-     receive heartbeats. Watchdog-fires test is manual (stop Machine C on UNOQ).
+7. test_watchdog_event seems to need cleanup.  the test passes based on the log which suggest that communication side is ok.  Yet the wire analysis fails. Assumption is this is purely test / observation problem and not functional issue.  
+
+8. deployment package for x86_64 might be useful. it will allow test artifacts from CI builds.
+
+9. 
+
+
 
