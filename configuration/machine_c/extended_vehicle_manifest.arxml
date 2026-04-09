@@ -24,7 +24,7 @@
                                 <SHORT-NAME>ExtendedVehicleEP</SHORT-NAME>
                                 <NETWORK-ENDPOINT-ADDRESSES>
                                     <IPV-4-CONFIGURATION>
-                                        <IPV-4-ADDRESS>192.168.1.96</IPV-4-ADDRESS>
+                                        <IPV-4-ADDRESS>192.168.2.96</IPV-4-ADDRESS>
                                     </IPV-4-CONFIGURATION>
                                 </NETWORK-ENDPOINT-ADDRESSES>
                             </NETWORK-ENDPOINT>
@@ -66,12 +66,6 @@
                             <INITIAL-DELAY-MIN-VALUE>100</INITIAL-DELAY-MIN-VALUE>
                             <INITIAL-DELAY-MAX-VALUE>200</INITIAL-DELAY-MAX-VALUE>
                         </INITIAL-OFFER-BEHAVIOR>
-                        <!-- Unicast SD peers: SD Offers and events are sent directly
-                             to these IPs instead of multicast 239.0.0.1.
-                             Required when the network does not forward multicast. -->
-                        <UNICAST-PEERS>
-                            <UNICAST-PEER>192.168.1.94</UNICAST-PEER>
-                        </UNICAST-PEERS>
                     </SD-SERVER-CONFIG>
                     <SERVICE-INSTANCE-ID>2</SERVICE-INSTANCE-ID>
                 </PROVIDED-SOMEIP-SERVICE-INSTANCE>

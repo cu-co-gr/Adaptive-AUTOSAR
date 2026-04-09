@@ -21,7 +21,7 @@
                                 <SHORT-NAME>WatchdogEP</SHORT-NAME>
                                 <NETWORK-ENDPOINT-ADDRESSES>
                                     <IPV-4-CONFIGURATION>
-                                        <IPV-4-ADDRESS>192.168.1.94</IPV-4-ADDRESS>
+                                        <IPV-4-ADDRESS>192.168.2.94</IPV-4-ADDRESS>
                                     </IPV-4-CONFIGURATION>
                                 </NETWORK-ENDPOINT-ADDRESSES>
                             </NETWORK-ENDPOINT>
@@ -48,11 +48,6 @@
                             <INITIAL-DELAY-MIN-VALUE>100</INITIAL-DELAY-MIN-VALUE>
                             <INITIAL-DELAY-MAX-VALUE>200</INITIAL-DELAY-MAX-VALUE>
                         </INITIAL-FIND-BEHAVIOR>
-                        <!-- Unicast SD peer: SD Finds are sent directly to Machine C.
-                             Required when the network does not forward multicast. -->
-                        <UNICAST-PEERS>
-                            <UNICAST-PEER>192.168.1.96</UNICAST-PEER>
-                        </UNICAST-PEERS>
                     </SD-CLIENT-CONFIG>
                     <!-- Machine B watches Machine C (UNOQ): Instance ID 2 -->
                     <SERVICE-INSTANCE-ID>2</SERVICE-INSTANCE-ID>

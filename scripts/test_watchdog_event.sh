@@ -2,13 +2,13 @@
 # Functional test: Machine A + B watching Machine C heartbeat
 #
 # Architecture:
-#   Machine C (UNOQ, 192.168.68.64): EV heartbeat provider, service 5 instance 2
+#   Machine C (UNOQ, 192.168.1.96): EV heartbeat provider, service 5 instance 2
 #   Machine A (this host, RPC :18080): WA instance 0, subscribes to Machine C EV
 #   Machine B (this host, RPC :18081): WA instance 1, subscribes to Machine C EV
 #
 # PREREQUISITE: Machine C must be running on the Arduino UNOQ BEFORE this
 #   script is launched. Start it with:
-#     ssh user@192.168.68.64 "cd <deploy-dir> && ./scripts/run_machine_c.sh &"
+#     ssh user@192.168.1.96 "cd <deploy-dir> && ./scripts/run_machine_c.sh &"
 #
 # What it does:
 #   1.  Checks Machine C is reachable (ping)
@@ -35,7 +35,7 @@ BIN="$REPO_DIR/build/bin/adaptive_autosar"
 LOG_A="/tmp/autosar_machine_a.log"
 LOG_B="/tmp/autosar_machine_b.log"
 PCAP="/tmp/autosar_wire.pcap"
-MACHINE_C_IP="192.168.68.64"
+MACHINE_C_IP="192.168.2.96"
 
 PASS=0
 FAIL=0
