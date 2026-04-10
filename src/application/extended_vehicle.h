@@ -3,10 +3,12 @@
 
 #include "../ara/exec/helper/modelled_process.h"
 #include "../ara/phm/supervised_entity.h"
+#include "../ara/per/key_value_storage.h"
 #include "./helper/network_configuration.h"
 #include "./helper/curl_wrapper.h"
 #include "./doip/doip_server.h"
 #include <cstdint>
+#include <memory>
 
 namespace application
 {
@@ -33,6 +35,10 @@ namespace application
         doip::DoipServer *mDoipServer;
 
         std::string mResourcesUrl;
+
+        std::unique_ptr<ara::per::KeyValueStorage> mStorage;
+        std::string mStoragePath;
+        uint32_t mLogCounter;
 
         bool tryConfigureRestCommunication(
             std::string apiKey, std::string bearerToken, std::string &vin);

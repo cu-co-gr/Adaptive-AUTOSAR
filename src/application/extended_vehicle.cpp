@@ -5,6 +5,7 @@
 #include "./extended_vehicle.h"
 #include <stdexcept>
 #include <cstdint>
+#include <sys/stat.h>
 
 namespace application
 {
@@ -18,7 +19,9 @@ namespace application
           mSupervisedEntity{cSeInstance, checkpointCommunicator},
           mSkeleton{nullptr},
           mCurl{nullptr},
-          mDoipServer{nullptr}
+          mDoipServer{nullptr},
+          mStorage{nullptr},
+          mLogCounter{0}
     {
     }
 
@@ -174,6 +177,46 @@ namespace application
 
         ara::log::LogStream _logStream;
 
+        // Open (or create) the persistency storage for this execution session.
+        // Try /var/per first; fall back to /tmp/per if not writable.
+        {
+            const std::string cPreferred{"/var/per"};
+            const std::string cFallback{"/tmp/per"};
+            if (::mkdir(cPreferred.c_str(), 0755) == 0 || errno == EEXIST)
+                mStoragePath = cPreferred + "/extended_vehicle.json";
+            else
+            {
+                ::mkdir(cFallback.c_str(), 0755);
+                mStoragePath = cFallback + "/extended_vehicle.json";
+            }
+        }
+        auto _openResult{ara::per::KeyValueStorage::Open(mStoragePath)};
+        {
+            ara::log::LogStream _perStream;
+            if (_openResult.HasValue())
+            {
+                auto _kvs{std::move(_openResult).Value()};
+                mStorage = std::unique_ptr<ara::per::KeyValueStorage>(
+                    new ara::per::KeyValueStorage(std::move(_kvs)));
+                _perStream << "[Per] Storage opened at " << mStoragePath;
+            }
+            else
+            {
+                _perStream << "[Per] Storage unavailable at " << mStoragePath;
+            }
+            Log(cLogLevel, _perStream);
+        }
+
+        // Helper: persist a log message and advance the entry counter.
+        auto persistLog = [this](const std::string &message)
+        {
+            if (mStorage)
+            {
+                mStorage->SetValue(std::to_string(mLogCounter), message);
+                ++mLogCounter;
+            }
+        };
+
         try
         {
             bool _running{true};
@@ -183,6 +226,7 @@ namespace application
 
             _logStream << "Extended Vehicle AA has been initialized.";
             Log(cLogLevel, _logStream);
+            persistLog("Extended Vehicle AA has been initialized.");
 
             std::string _vin;
             bool cConfigured{tryConfigureRestCommunication(
@@ -213,13 +257,17 @@ namespace application
                 ++_heartbeatCounter;
                 if (_heartbeatCounter % 100 == 0)
                 {
+                    std::string _hbMsg =
+                        std::string{"[Heartbeat] ExtendedVehicle alive"} +
+                        " | VIN=" +
+                        (_vin.empty() ? std::string{"DEMO"} : _vin) +
+                        " | SD server " +
+                        (cConfigured ? "active" : "inactive");
+
                     ara::log::LogStream _hbStream;
-                    _hbStream << "[Heartbeat] ExtendedVehicle alive"
-                              << " | VIN="
-                              << (_vin.empty() ? std::string{"DEMO"} : _vin)
-                              << " | SD server "
-                              << (cConfigured ? "active" : "inactive");
+                    _hbStream << _hbMsg;
                     Log(cLogLevel, _hbStream);
+                    persistLog(_hbMsg);
 
                     vehicle_status::VehicleStatusData _data;
                     _data.Vin = _vin;
@@ -229,16 +277,20 @@ namespace application
             }
 
             _logStream.Flush();
+            std::string _termConvMsg;
             if (ara::diag::Conversation::GetCurrentActiveConversations().size() == 0)
             {
-                _logStream << "There was no active diagnostic conversation at the termination.";
+                _termConvMsg =
+                    "There was no active diagnostic conversation at the termination.";
             }
             else
             {
-                _logStream << "There were still some active diagnostic conversations at the termination.";
+                _termConvMsg =
+                    "There were still some active diagnostic conversations at the termination.";
             }
-
+            _logStream << _termConvMsg;
             Log(cLogLevel, _logStream);
+            persistLog(_termConvMsg);
 
             if (mSkeleton)
                 mSkeleton->StopOfferService();
@@ -246,6 +298,16 @@ namespace application
             _logStream.Flush();
             _logStream << "Extended Vehicle AA has been terminated.";
             Log(cLogLevel, _logStream);
+            persistLog("Extended Vehicle AA has been terminated.");
+
+            if (mStorage)
+            {
+                mStorage->SyncToStorage();
+                ara::log::LogStream _perStream;
+                _perStream << "[Per] Synced " << mLogCounter
+                           << " entries to " << mStoragePath;
+                Log(cLogLevel, _perStream);
+            }
 
             return cSuccessfulExitCode;
         }

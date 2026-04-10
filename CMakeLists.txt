@@ -162,6 +162,9 @@ set(source_ara_phm_dir
 set(source_ara_phm_supervisors_dir
   "${CMAKE_SOURCE_DIR}/src/ara/phm/supervisors")
 
+set(source_ara_per_dir
+  "${CMAKE_SOURCE_DIR}/src/ara/per")
+
 set(source_application_dir
   "${CMAKE_SOURCE_DIR}/src/application")
 
@@ -238,6 +241,9 @@ set(test_ara_phm_dir
 
 set(test_ara_phm_supervisors_dir
   "${CMAKE_SOURCE_DIR}/test/ara/phm/supervisors")
+
+set(test_ara_per_dir
+  "${CMAKE_SOURCE_DIR}/test/ara/per")
 
 set(test_ara_com_vehicle_status_dir
   "${CMAKE_SOURCE_DIR}/test/ara/com/vehicle_status")
@@ -540,6 +546,20 @@ target_link_libraries(
   ara_exec
 )
 
+add_library(
+  ara_per
+  ${source_ara_per_dir}/per_error_domain.h
+  ${source_ara_per_dir}/per_error_domain.cpp
+  ${source_ara_per_dir}/key_value_storage.h
+  ${source_ara_per_dir}/key_value_storage.cpp
+)
+
+target_link_libraries(
+  ara_per
+  ara_core
+  jsoncpp_lib
+)
+
 add_executable(
   adaptive_autosar
   ${source_dir}/main.cpp
@@ -636,6 +656,7 @@ target_link_libraries(
   ara_log
   ara_diag
   ara_phm
+  ara_per
   vehicle_status_gen
 )
 
@@ -697,6 +718,7 @@ target_link_libraries(
   arxml
   ara_exec
   ara_log
+  ara_per
   vehicle_status_gen
 )
 
@@ -750,6 +772,7 @@ install(
     ara_sm
     ara_diag
     ara_phm
+    ara_per
     vehicle_status_gen
     async_bsd_socket_lib
     obd_ii_emulator
@@ -854,6 +877,7 @@ if(build_tests)
     ${test_ara_phm_supervisors_dir}/deadline_supervision_test.cpp
     ${test_ara_phm_supervisors_dir}/global_supervision_test.cpp
     ${test_ara_com_vehicle_status_dir}/vehicle_status_data_test.cpp
+    ${test_ara_per_dir}/key_value_storage_test.cpp
   )
 
   target_link_libraries(
@@ -871,6 +895,7 @@ if(build_tests)
     ara_sm
     ara_phm
     ara_diag
+    ara_per
     vehicle_status_gen
   )
 

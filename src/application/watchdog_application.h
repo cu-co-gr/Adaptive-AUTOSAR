@@ -3,7 +3,9 @@
 
 #include <chrono>
 #include <cstdint>
+#include <memory>
 #include "../ara/exec/helper/modelled_process.h"
+#include "../ara/per/key_value_storage.h"
 
 namespace application
 {
@@ -27,6 +29,10 @@ namespace application
         std::chrono::steady_clock::time_point mLastEventTime;
         bool mExpiredLogged{false};
         bool mFirstEventReceived{false};
+
+        std::unique_ptr<ara::per::KeyValueStorage> mStorage;
+        std::string mStoragePath;
+        uint32_t mLogCounter{0};
 
         void onEventReceived(const vehicle_status::VehicleStatusData &data);
 
