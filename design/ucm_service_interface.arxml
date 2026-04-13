@@ -1,0 +1,255 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    §3.8  Service Interface Design — PackageManagement
+
+    Defines the SOME/IP service interface used by UCM (Update and
+    Configuration Management) and VUCM (Vehicle UCM). VUCM calls each UCM
+    instance directly over this interface (spec §9.7.1, Figure 9.99).
+
+    Service-Interface-ID : 0x00C0  (192)
+    Port                 : 8090 (UCM_A / UCM_B)  |  8092 (UCM_C, remote)
+    Protocol             : TCP (reliable RPC)
+    Transport            : SOME/IP RPC (SocketRpcServer / SocketRpcClient)
+
+    Method mapping
+    ──────────────
+    0x0001  TransferStart      — allocate a transfer session, return TransferIdType
+    0x0002  TransferData       — deliver one binary chunk for a given transfer
+    0x0003  TransferExit       — finalise and verify the received data
+    0x0004  ProcessSwPackage   — extract and stage the SW Package
+    0x0005  Activate           — install binary + update execution manifest
+    0x0006  GetSwClusterInfo   — query the installed-cluster registry
+    0x0007  GetCurrentStatus   — return the current UpdateStateType
+-->
+<AUTOSAR xmlns="http://autosar.org/schema/r4.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://autosar.org/schema/r4.0 autosar_00050.xsd">
+    <AR-PACKAGES>
+        <AR-PACKAGE>
+            <SHORT-NAME>UcmServiceInterface</SHORT-NAME>
+            <ELEMENTS>
+
+                <!-- ── Implementation Data Types ───────────────────────────── -->
+
+                <!-- TransferIdType: opaque session handle returned by TransferStart -->
+                <IMPLEMENTATION-DATA-TYPE>
+                    <SHORT-NAME>TransferIdType</SHORT-NAME>
+                    <CATEGORY>VALUE</CATEGORY>
+                    <BASE-TYPE-REF DEST="BASE-TYPE">uint32</BASE-TYPE-REF>
+                </IMPLEMENTATION-DATA-TYPE>
+
+                <!-- ByteVectorType: variable-length byte sequence for TransferData -->
+                <IMPLEMENTATION-DATA-TYPE>
+                    <SHORT-NAME>ByteVectorType</SHORT-NAME>
+                    <CATEGORY>ARRAY</CATEGORY>
+                    <ELEMENT>
+                        <CATEGORY>VALUE</CATEGORY>
+                        <BASE-TYPE-REF DEST="BASE-TYPE">uint8</BASE-TYPE-REF>
+                    </ELEMENT>
+                </IMPLEMENTATION-DATA-TYPE>
+
+                <!-- PackageInfoType: metadata sent in TransferStart -->
+                <IMPLEMENTATION-DATA-TYPE>
+                    <SHORT-NAME>PackageInfoType</SHORT-NAME>
+                    <CATEGORY>STRUCTURE</CATEGORY>
+                    <SUB-ELEMENTS>
+                        <IMPLEMENTATION-DATA-TYPE-ELEMENT>
+                            <SHORT-NAME>name</SHORT-NAME>
+                            <CATEGORY>VALUE</CATEGORY>
+                            <!-- Phase 1: absolute path on shared fs; Phase 2: human name -->
+                            <BASE-TYPE-REF DEST="BASE-TYPE">string</BASE-TYPE-REF>
+                        </IMPLEMENTATION-DATA-TYPE-ELEMENT>
+                        <IMPLEMENTATION-DATA-TYPE-ELEMENT>
+                            <SHORT-NAME>version</SHORT-NAME>
+                            <CATEGORY>VALUE</CATEGORY>
+                            <BASE-TYPE-REF DEST="BASE-TYPE">string</BASE-TYPE-REF>
+                        </IMPLEMENTATION-DATA-TYPE-ELEMENT>
+                        <IMPLEMENTATION-DATA-TYPE-ELEMENT>
+                            <SHORT-NAME>size</SHORT-NAME>
+                            <CATEGORY>VALUE</CATEGORY>
+                            <!-- Total byte count of the SW Package (0 in Phase 1) -->
+                            <BASE-TYPE-REF DEST="BASE-TYPE">uint64</BASE-TYPE-REF>
+                        </IMPLEMENTATION-DATA-TYPE-ELEMENT>
+                    </SUB-ELEMENTS>
+                </IMPLEMENTATION-DATA-TYPE>
+
+                <!-- UpdateStateType: UCM state machine (spec §9.7.2) -->
+                <IMPLEMENTATION-DATA-TYPE>
+                    <SHORT-NAME>UpdateStateType</SHORT-NAME>
+                    <CATEGORY>VALUE</CATEGORY>
+                    <DATA-CONSTR>
+                        <!-- kIdle=0 kTransferring=1 kProcessing=2 kActivating=3
+                             kActivated=4 kRollingBack=5 kRolledBack=6 -->
+                        <CONSTR-LEVEL>0</CONSTR-LEVEL>
+                        <INTERNAL-CONSTRS>
+                            <LOWER-LIMIT>0</LOWER-LIMIT>
+                            <UPPER-LIMIT>6</UPPER-LIMIT>
+                        </INTERNAL-CONSTRS>
+                    </DATA-CONSTR>
+                    <BASE-TYPE-REF DEST="BASE-TYPE">uint8</BASE-TYPE-REF>
+                </IMPLEMENTATION-DATA-TYPE>
+
+                <!-- ── Service Interface ────────────────────────────────────── -->
+
+                <SERVICE-INTERFACE>
+                    <SHORT-NAME>PackageManagement</SHORT-NAME>
+                    <CATEGORY>SOMEIP</CATEGORY>
+                    <METHODS>
+
+                        <!-- 0x0001 TransferStart -->
+                        <CLIENT-SERVER-OPERATION>
+                            <SHORT-NAME>TransferStart</SHORT-NAME>
+                            <ARGUMENTS>
+                                <ARGUMENT-DATA-PROTOTYPE>
+                                    <SHORT-NAME>info</SHORT-NAME>
+                                    <DIRECTION>IN</DIRECTION>
+                                    <TYPE-TREF DEST="IMPLEMENTATION-DATA-TYPE">PackageInfoType</TYPE-TREF>
+                                </ARGUMENT-DATA-PROTOTYPE>
+                                <ARGUMENT-DATA-PROTOTYPE>
+                                    <SHORT-NAME>transferId</SHORT-NAME>
+                                    <DIRECTION>OUT</DIRECTION>
+                                    <TYPE-TREF DEST="IMPLEMENTATION-DATA-TYPE">TransferIdType</TYPE-TREF>
+                                </ARGUMENT-DATA-PROTOTYPE>
+                            </ARGUMENTS>
+                        </CLIENT-SERVER-OPERATION>
+
+                        <!-- 0x0002 TransferData -->
+                        <CLIENT-SERVER-OPERATION>
+                            <SHORT-NAME>TransferData</SHORT-NAME>
+                            <ARGUMENTS>
+                                <ARGUMENT-DATA-PROTOTYPE>
+                                    <SHORT-NAME>transferId</SHORT-NAME>
+                                    <DIRECTION>IN</DIRECTION>
+                                    <TYPE-TREF DEST="IMPLEMENTATION-DATA-TYPE">TransferIdType</TYPE-TREF>
+                                </ARGUMENT-DATA-PROTOTYPE>
+                                <ARGUMENT-DATA-PROTOTYPE>
+                                    <SHORT-NAME>block</SHORT-NAME>
+                                    <DIRECTION>IN</DIRECTION>
+                                    <TYPE-TREF DEST="IMPLEMENTATION-DATA-TYPE">ByteVectorType</TYPE-TREF>
+                                </ARGUMENT-DATA-PROTOTYPE>
+                                <ARGUMENT-DATA-PROTOTYPE>
+                                    <SHORT-NAME>blockCounter</SHORT-NAME>
+                                    <DIRECTION>IN</DIRECTION>
+                                    <BASE-TYPE-REF DEST="BASE-TYPE">uint32</BASE-TYPE-REF>
+                                </ARGUMENT-DATA-PROTOTYPE>
+                            </ARGUMENTS>
+                        </CLIENT-SERVER-OPERATION>
+
+                        <!-- 0x0003 TransferExit -->
+                        <CLIENT-SERVER-OPERATION>
+                            <SHORT-NAME>TransferExit</SHORT-NAME>
+                            <ARGUMENTS>
+                                <ARGUMENT-DATA-PROTOTYPE>
+                                    <SHORT-NAME>transferId</SHORT-NAME>
+                                    <DIRECTION>IN</DIRECTION>
+                                    <TYPE-TREF DEST="IMPLEMENTATION-DATA-TYPE">TransferIdType</TYPE-TREF>
+                                </ARGUMENT-DATA-PROTOTYPE>
+                            </ARGUMENTS>
+                        </CLIENT-SERVER-OPERATION>
+
+                        <!-- 0x0004 ProcessSwPackage -->
+                        <CLIENT-SERVER-OPERATION>
+                            <SHORT-NAME>ProcessSwPackage</SHORT-NAME>
+                            <ARGUMENTS>
+                                <ARGUMENT-DATA-PROTOTYPE>
+                                    <SHORT-NAME>transferId</SHORT-NAME>
+                                    <DIRECTION>IN</DIRECTION>
+                                    <TYPE-TREF DEST="IMPLEMENTATION-DATA-TYPE">TransferIdType</TYPE-TREF>
+                                </ARGUMENT-DATA-PROTOTYPE>
+                            </ARGUMENTS>
+                        </CLIENT-SERVER-OPERATION>
+
+                        <!-- 0x0005 Activate -->
+                        <CLIENT-SERVER-OPERATION>
+                            <SHORT-NAME>Activate</SHORT-NAME>
+                            <ARGUMENTS>
+                                <ARGUMENT-DATA-PROTOTYPE>
+                                    <SHORT-NAME>installRoot</SHORT-NAME>
+                                    <DIRECTION>IN</DIRECTION>
+                                    <BASE-TYPE-REF DEST="BASE-TYPE">string</BASE-TYPE-REF>
+                                </ARGUMENT-DATA-PROTOTYPE>
+                                <ARGUMENT-DATA-PROTOTYPE>
+                                    <SHORT-NAME>executionManifestPath</SHORT-NAME>
+                                    <DIRECTION>IN</DIRECTION>
+                                    <BASE-TYPE-REF DEST="BASE-TYPE">string</BASE-TYPE-REF>
+                                </ARGUMENT-DATA-PROTOTYPE>
+                            </ARGUMENTS>
+                        </CLIENT-SERVER-OPERATION>
+
+                        <!-- 0x0006 GetSwClusterInfo -->
+                        <CLIENT-SERVER-OPERATION>
+                            <SHORT-NAME>GetSwClusterInfo</SHORT-NAME>
+                            <ARGUMENTS>
+                                <ARGUMENT-DATA-PROTOTYPE>
+                                    <SHORT-NAME>clusters</SHORT-NAME>
+                                    <DIRECTION>OUT</DIRECTION>
+                                    <!-- Returns a list of PackageInfoType entries -->
+                                    <TYPE-TREF DEST="IMPLEMENTATION-DATA-TYPE">PackageInfoType</TYPE-TREF>
+                                </ARGUMENT-DATA-PROTOTYPE>
+                            </ARGUMENTS>
+                        </CLIENT-SERVER-OPERATION>
+
+                        <!-- 0x0007 GetCurrentStatus -->
+                        <CLIENT-SERVER-OPERATION>
+                            <SHORT-NAME>GetCurrentStatus</SHORT-NAME>
+                            <ARGUMENTS>
+                                <ARGUMENT-DATA-PROTOTYPE>
+                                    <SHORT-NAME>state</SHORT-NAME>
+                                    <DIRECTION>OUT</DIRECTION>
+                                    <TYPE-TREF DEST="IMPLEMENTATION-DATA-TYPE">UpdateStateType</TYPE-TREF>
+                                </ARGUMENT-DATA-PROTOTYPE>
+                            </ARGUMENTS>
+                        </CLIENT-SERVER-OPERATION>
+
+                    </METHODS>
+                </SERVICE-INTERFACE>
+
+                <!-- ── SOME/IP Service Interface Deployment ─────────────────── -->
+
+                <SOMEIP-SERVICE-INTERFACE-DEPLOYMENT>
+                    <SHORT-NAME>PackageManagementDeployment</SHORT-NAME>
+                    <SERVICE-INTERFACE-REF DEST="SERVICE-INTERFACE">PackageManagement</SERVICE-INTERFACE-REF>
+                    <SERVICE-INTERFACE-ID>192</SERVICE-INTERFACE-ID><!-- 0x00C0 -->
+                    <SERVICE-INTERFACE-VERSION>
+                        <MAJOR-VERSION>1</MAJOR-VERSION>
+                        <MINOR-VERSION>0</MINOR-VERSION>
+                    </SERVICE-INTERFACE-VERSION>
+                    <METHOD-DEPLOYMENTS>
+                        <SOMEIP-METHOD-DEPLOYMENT>
+                            <SHORT-NAME>TransferStart</SHORT-NAME>
+                            <METHOD-ID>1</METHOD-ID><!-- 0x0001 -->
+                        </SOMEIP-METHOD-DEPLOYMENT>
+                        <SOMEIP-METHOD-DEPLOYMENT>
+                            <SHORT-NAME>TransferData</SHORT-NAME>
+                            <METHOD-ID>2</METHOD-ID><!-- 0x0002 -->
+                        </SOMEIP-METHOD-DEPLOYMENT>
+                        <SOMEIP-METHOD-DEPLOYMENT>
+                            <SHORT-NAME>TransferExit</SHORT-NAME>
+                            <METHOD-ID>3</METHOD-ID><!-- 0x0003 -->
+                        </SOMEIP-METHOD-DEPLOYMENT>
+                        <SOMEIP-METHOD-DEPLOYMENT>
+                            <SHORT-NAME>ProcessSwPackage</SHORT-NAME>
+                            <METHOD-ID>4</METHOD-ID><!-- 0x0004 -->
+                        </SOMEIP-METHOD-DEPLOYMENT>
+                        <SOMEIP-METHOD-DEPLOYMENT>
+                            <SHORT-NAME>Activate</SHORT-NAME>
+                            <METHOD-ID>5</METHOD-ID><!-- 0x0005 -->
+                        </SOMEIP-METHOD-DEPLOYMENT>
+                        <SOMEIP-METHOD-DEPLOYMENT>
+                            <SHORT-NAME>GetSwClusterInfo</SHORT-NAME>
+                            <METHOD-ID>6</METHOD-ID><!-- 0x0006 -->
+                        </SOMEIP-METHOD-DEPLOYMENT>
+                        <SOMEIP-METHOD-DEPLOYMENT>
+                            <SHORT-NAME>GetCurrentStatus</SHORT-NAME>
+                            <METHOD-ID>7</METHOD-ID><!-- 0x0007 -->
+                        </SOMEIP-METHOD-DEPLOYMENT>
+                    </METHOD-DEPLOYMENTS>
+                    <!-- Phase 1: UCM_A and UCM_B both on 127.0.0.1, port 8090 / 8091
+                         Phase 2: UCM_C on 192.168.2.96, port 8090 -->
+                    <DEFAULT-TCP-PORT>8090</DEFAULT-TCP-PORT>
+                </SOMEIP-SERVICE-INTERFACE-DEPLOYMENT>
+
+            </ELEMENTS>
+        </AR-PACKAGE>
+    </AR-PACKAGES>
+</AUTOSAR>

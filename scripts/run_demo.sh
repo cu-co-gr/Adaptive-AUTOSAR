@@ -34,10 +34,12 @@ cleanup() {
     echo "Stopping Machine A and Machine B..."
     kill %1 %2 2>/dev/null
     wait
-    pkill -f "build/bin/state_management"           2>/dev/null || true
-    pkill -f "build/bin/platform_health_management" 2>/dev/null || true
-    pkill -f "build/bin/diagnostic_manager"         2>/dev/null || true
-    pkill -f "build/bin/watchdog_application"       2>/dev/null || true
+    pkill -f "build/bin/state_management"              2>/dev/null || true
+    pkill -f "build/bin/platform_health_management"    2>/dev/null || true
+    pkill -f "build/bin/diagnostic_manager"            2>/dev/null || true
+    pkill -f "build/bin/watchdog_application"          2>/dev/null || true
+    pkill -f "build/bin/update_config_manager"         2>/dev/null || true
+    pkill -f "build/bin/vehicle_update_config_manager" 2>/dev/null || true
     echo "Done. (Machine C on UNOQ continues running.)"
 }
 trap cleanup INT TERM
@@ -51,10 +53,10 @@ echo "Both A and B discovering Machine C via SOME/IP SD multicast 239.0.0.1:5555
 echo "Press Ctrl+C to stop A and B."
 echo ""
 
-"$BIN" ./configuration/machine_a/execution_manifest.arxml \
-    2>&1 | sed 's/^/[A] /' &
+stdbuf -oL "$BIN" ./configuration/machine_a/execution_manifest.arxml \
+    2>&1 | sed -u 's/^/[A] /' &
 
-"$BIN" ./configuration/machine_b/execution_manifest.arxml \
-    2>&1 | sed 's/^/[B] /' &
+stdbuf -oL "$BIN" ./configuration/machine_b/execution_manifest.arxml \
+    2>&1 | sed -u 's/^/[B] /' &
 
 wait

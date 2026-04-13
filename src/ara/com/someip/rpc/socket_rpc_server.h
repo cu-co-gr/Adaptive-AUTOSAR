@@ -19,7 +19,11 @@ namespace ara
                 class SocketRpcServer : public RpcServer
                 {
                 private:
-                    static const size_t cBufferSize{256};
+                    static const size_t cBufferSize{65536};
+
+                    // Accumulates partial TCP reads until a complete SOME/IP
+                    // message (identified by the Length header field) is ready.
+                    std::vector<uint8_t> mReceiveBuffer;
 
                     helper::ConcurrentQueue<std::vector<uint8_t>> mSendingQueue;
                     AsyncBsdSocketLib::Poller *const mPoller;

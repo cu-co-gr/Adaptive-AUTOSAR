@@ -1,5 +1,7 @@
 #include <algorithm>
+#include <sys/socket.h>
 #include "./socket_rpc_server.h"
+#include "../../helper/payload_helper.h"
 #include <stdexcept>
 #include <cstdint>
 
@@ -76,15 +78,52 @@ namespace ara
                 {
                     std::array<uint8_t, cBufferSize> _buffer;
                     ssize_t _receivedSize{mServer.Receive(_buffer)};
-                    if (_receivedSize > 0)
+                    if (_receivedSize <= 0)
                     {
-                        const std::vector<uint8_t> cRequestPayload(
-                            std::make_move_iterator(_buffer.begin()),
-                            std::make_move_iterator(_buffer.begin() + _receivedSize));
+                        return;
+                    }
+
+                    // Accumulate into the reassembly buffer
+                    mReceiveBuffer.insert(
+                        mReceiveBuffer.end(),
+                        _buffer.begin(),
+                        _buffer.begin() + _receivedSize);
+
+                    // Process all complete SOME/IP messages in the buffer.
+                    // SOME/IP header: bytes [0-3] MessageId, [4-7] Length (BE
+                    // uint32). Total frame = 8 + Length bytes.
+                    while (true)
+                    {
+                        const size_t cMinHeader{8};
+                        if (mReceiveBuffer.size() < cMinHeader)
+                        {
+                            break;
+                        }
+
+                        size_t _lengthOffset{4};
+                        uint32_t _length{
+                            helper::ExtractInteger(mReceiveBuffer, _lengthOffset)};
+                        size_t _totalSize{
+                            cMinHeader + static_cast<size_t>(_length)};
+
+                        if (mReceiveBuffer.size() < _totalSize)
+                        {
+                            break;
+                        }
+
+                        const std::vector<uint8_t> _message(
+                            mReceiveBuffer.begin(),
+                            mReceiveBuffer.begin() +
+                                static_cast<std::ptrdiff_t>(_totalSize));
+
+                        mReceiveBuffer.erase(
+                            mReceiveBuffer.begin(),
+                            mReceiveBuffer.begin() +
+                                static_cast<std::ptrdiff_t>(_totalSize));
 
                         std::vector<uint8_t> _responsePayload;
                         bool _handled{
-                            TryInvokeHandler(cRequestPayload, _responsePayload)};
+                            TryInvokeHandler(_message, _responsePayload)};
                         if (_handled)
                         {
                             mSendingQueue.TryEnqueue(std::move(_responsePayload));
@@ -98,15 +137,16 @@ namespace ara
                     {
                         std::vector<uint8_t> _payload;
                         bool _dequeued{mSendingQueue.TryDequeue(_payload)};
-                        if (_dequeued)
+                        if (_dequeued && !_payload.empty())
                         {
-                            std::array<uint8_t, cBufferSize> _buffer;
-                            std::copy_n(
-                                std::make_move_iterator(_payload.begin()),
+                            // Send entire payload in one call using the
+                            // connection fd directly (avoids fixed-array size
+                            // limit of the template Send() method).
+                            ::send(
+                                mServer.Connection(),
+                                _payload.data(),
                                 _payload.size(),
-                                _buffer.begin());
-
-                            mServer.Send(_buffer);
+                                MSG_NOSIGNAL);
                         }
                     }
                 }

@@ -34,6 +34,10 @@ namespace ara
                 return "No space left on device";
             case ara::per::PerErrc::kInitValueNotAvailable:
                 return "No default/init value configured";
+            case ara::per::PerErrc::kResourceBusy:
+                return "Resource is locked or in use";
+            case ara::per::PerErrc::kFileNotFound:
+                return "Named file does not exist in storage";
             default:
                 return "Not supported";
             }

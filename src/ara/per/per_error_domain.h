@@ -18,7 +18,9 @@ namespace ara
             kPhysicalStorageFailure = 4,  ///!< I/O error on backing file
             kIntegrityCorrupted = 5,      ///!< Storage file is corrupt or unparseable
             kOutOfStorageSpace = 6,       ///!< No space left on device
-            kInitValueNotAvailable = 7    ///!< No default/init value configured
+            kInitValueNotAvailable = 7,   ///!< No default/init value configured
+            kResourceBusy = 8,            ///!< Resource is locked or in use
+            kFileNotFound = 9             ///!< Named file does not exist in storage
         };
 
         /// @brief Persistency error domain

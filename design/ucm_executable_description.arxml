@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    §3.3.2.4/6/3  Executable + SW Composition + Process Design
+
+    This file consolidates:
+      §3.3.2.4  Executable Description  — links SWC to timer granularity
+      §3.3.2.6  SW Composition          — lists SWC prototypes (app layer only)
+      §3.3.2.3  Process Design          — maps executables to machine FG states
+
+    Executables defined (UCM Story e additions):
+    ─────────────────────────────────────────────────────────────────────────
+    ExtendedVehicle               — existing, listed for completeness
+    WatchdogApplication           — existing, listed for completeness
+    UpdateConfigurationManager    — new (UCM daemon)
+    VehicleUpdateConfigManager    — new (VUCM orchestrator, Machine A only)
+    TimeSynchronization           — new (test placeholder installed by VUCM)
+
+    Note: Platform Functional Clusters (EM, SM, PHM, DM) are NOT listed here;
+    they are part of the Platform Package, not the Application Package.
+-->
+<AUTOSAR xmlns="http://autosar.org/schema/r4.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://autosar.org/schema/r4.0 autosar_00050.xsd">
+    <AR-PACKAGES>
+        <AR-PACKAGE>
+            <SHORT-NAME>ExecutableDescription</SHORT-NAME>
+            <ELEMENTS>
+
+                <!-- ── SW Composition ──────────────────────────────────────── -->
+                <COMPOSITION-SW-COMPONENT-TYPE>
+                    <SHORT-NAME>ApplicationComposition</SHORT-NAME>
+                    <COMPONENTS>
+                        <SW-COMPONENT-PROTOTYPE>
+                            <SHORT-NAME>ExtendedVehicleInstance</SHORT-NAME>
+                            <TYPE-TREF DEST="ADAPTIVE-APPLICATION-SW-COMPONENT-TYPE">
+                                ExtendedVehicle
+                            </TYPE-TREF>
+                        </SW-COMPONENT-PROTOTYPE>
+                        <SW-COMPONENT-PROTOTYPE>
+                            <SHORT-NAME>WatchdogApplicationInstance</SHORT-NAME>
+                            <TYPE-TREF DEST="ADAPTIVE-APPLICATION-SW-COMPONENT-TYPE">
+                                WatchdogApplication
+                            </TYPE-TREF>
+                        </SW-COMPONENT-PROTOTYPE>
+                        <SW-COMPONENT-PROTOTYPE>
+                            <SHORT-NAME>UpdateConfigManagerInstance</SHORT-NAME>
+                            <TYPE-TREF DEST="ADAPTIVE-APPLICATION-SW-COMPONENT-TYPE">
+                                UpdateConfigurationManager
+                            </TYPE-TREF>
+                        </SW-COMPONENT-PROTOTYPE>
+                        <SW-COMPONENT-PROTOTYPE>
+                            <SHORT-NAME>VehicleUpdateConfigMgrInstance</SHORT-NAME>
+                            <!-- Only deployed on Machine A -->
+                            <TYPE-TREF DEST="ADAPTIVE-APPLICATION-SW-COMPONENT-TYPE">
+                                VehicleUpdateConfigurationManager
+                            </TYPE-TREF>
+                        </SW-COMPONENT-PROTOTYPE>
+                        <SW-COMPONENT-PROTOTYPE>
+                            <SHORT-NAME>TimeSynchronizationInstance</SHORT-NAME>
+                            <!-- Placeholder; installed dynamically by VUCM -->
+                            <TYPE-TREF DEST="ADAPTIVE-APPLICATION-SW-COMPONENT-TYPE">
+                                TimeSynchronization
+                            </TYPE-TREF>
+                        </SW-COMPONENT-PROTOTYPE>
+                    </COMPONENTS>
+                </COMPOSITION-SW-COMPONENT-TYPE>
+
+                <!-- ── Executables ─────────────────────────────────────────── -->
+
+                <EXECUTABLE>
+                    <SHORT-NAME>ExtendedVehicle</SHORT-NAME>
+                    <ROOT-SW-COMPONENT-PROTOTYPE-REF DEST="SW-COMPONENT-PROTOTYPE">
+                        ExtendedVehicleInstance
+                    </ROOT-SW-COMPONENT-PROTOTYPE-REF>
+                    <!-- 10 ms scheduler tick (WaitForActivation period) -->
+                    <SCHEDULER-GRANULARITY>10</SCHEDULER-GRANULARITY>
+                </EXECUTABLE>
+
+                <EXECUTABLE>
+                    <SHORT-NAME>WatchdogApplication</SHORT-NAME>
+                    <ROOT-SW-COMPONENT-PROTOTYPE-REF DEST="SW-COMPONENT-PROTOTYPE">
+                        WatchdogApplicationInstance
+                    </ROOT-SW-COMPONENT-PROTOTYPE-REF>
+                    <SCHEDULER-GRANULARITY>10</SCHEDULER-GRANULARITY>
+                </EXECUTABLE>
+
+                <EXECUTABLE>
+                    <SHORT-NAME>UpdateConfigurationManager</SHORT-NAME>
+                    <ROOT-SW-COMPONENT-PROTOTYPE-REF DEST="SW-COMPONENT-PROTOTYPE">
+                        UpdateConfigManagerInstance
+                    </ROOT-SW-COMPONENT-PROTOTYPE-REF>
+                    <SCHEDULER-GRANULARITY>10</SCHEDULER-GRANULARITY>
+                </EXECUTABLE>
+
+                <EXECUTABLE>
+                    <SHORT-NAME>VehicleUpdateConfigManager</SHORT-NAME>
+                    <ROOT-SW-COMPONENT-PROTOTYPE-REF DEST="SW-COMPONENT-PROTOTYPE">
+                        VehicleUpdateConfigMgrInstance
+                    </ROOT-SW-COMPONENT-PROTOTYPE-REF>
+                    <!-- VUCM runs a one-shot transfer sequence; 10 ms tick -->
+                    <SCHEDULER-GRANULARITY>10</SCHEDULER-GRANULARITY>
+                </EXECUTABLE>
+
+                <EXECUTABLE>
+                    <SHORT-NAME>TimeSynchronization</SHORT-NAME>
+                    <ROOT-SW-COMPONENT-PROTOTYPE-REF DEST="SW-COMPONENT-PROTOTYPE">
+                        TimeSynchronizationInstance
+                    </ROOT-SW-COMPONENT-PROTOTYPE-REF>
+                    <SCHEDULER-GRANULARITY>1000</SCHEDULER-GRANULARITY><!-- 1 s heartbeat -->
+                </EXECUTABLE>
+
+                <!-- ── Process Designs ─────────────────────────────────────── -->
+
+                <PROCESS-DESIGN>
+                    <SHORT-NAME>ExtendedVehicleProcess</SHORT-NAME>
+                    <EXECUTABLE-REF DEST="EXECUTABLE">ExtendedVehicle</EXECUTABLE-REF>
+                    <FUNCTION-GROUP-STATE-IREFS>
+                        <FUNCTION-GROUP-STATE-IREF>
+                            <FUNCTION-GROUP-REF>MachineFG</FUNCTION-GROUP-REF>
+                            <FUNCTION-GROUP-STATE-REF>StartUp</FUNCTION-GROUP-STATE-REF>
+                        </FUNCTION-GROUP-STATE-IREF>
+                    </FUNCTION-GROUP-STATE-IREFS>
+                </PROCESS-DESIGN>
+
+                <PROCESS-DESIGN>
+                    <SHORT-NAME>WatchdogApplicationProcess</SHORT-NAME>
+                    <EXECUTABLE-REF DEST="EXECUTABLE">WatchdogApplication</EXECUTABLE-REF>
+                    <FUNCTION-GROUP-STATE-IREFS>
+                        <FUNCTION-GROUP-STATE-IREF>
+                            <FUNCTION-GROUP-REF>MachineFG</FUNCTION-GROUP-REF>
+                            <FUNCTION-GROUP-STATE-REF>StartUp</FUNCTION-GROUP-STATE-REF>
+                        </FUNCTION-GROUP-STATE-IREF>
+                    </FUNCTION-GROUP-STATE-IREFS>
+                </PROCESS-DESIGN>
+
+                <PROCESS-DESIGN>
+                    <SHORT-NAME>UpdateConfigManagerProcess</SHORT-NAME>
+                    <EXECUTABLE-REF DEST="EXECUTABLE">UpdateConfigurationManager</EXECUTABLE-REF>
+                    <!-- Not a BOOTSTRAP process; starts in StartUp like other services -->
+                    <FUNCTION-GROUP-STATE-IREFS>
+                        <FUNCTION-GROUP-STATE-IREF>
+                            <FUNCTION-GROUP-REF>MachineFG</FUNCTION-GROUP-REF>
+                            <FUNCTION-GROUP-STATE-REF>StartUp</FUNCTION-GROUP-STATE-REF>
+                        </FUNCTION-GROUP-STATE-IREF>
+                    </FUNCTION-GROUP-STATE-IREFS>
+                </PROCESS-DESIGN>
+
+                <PROCESS-DESIGN>
+                    <SHORT-NAME>VehicleUpdateConfigMgrProcess</SHORT-NAME>
+                    <EXECUTABLE-REF DEST="EXECUTABLE">VehicleUpdateConfigManager</EXECUTABLE-REF>
+                    <!-- Machine A only; triggered on StartUp to initiate transfer -->
+                    <FUNCTION-GROUP-STATE-IREFS>
+                        <FUNCTION-GROUP-STATE-IREF>
+                            <FUNCTION-GROUP-REF>MachineFG</FUNCTION-GROUP-REF>
+                            <FUNCTION-GROUP-STATE-REF>StartUp</FUNCTION-GROUP-STATE-REF>
+                        </FUNCTION-GROUP-STATE-IREF>
+                    </FUNCTION-GROUP-STATE-IREFS>
+                </PROCESS-DESIGN>
+
+                <PROCESS-DESIGN>
+                    <SHORT-NAME>TimeSynchronizationProcess</SHORT-NAME>
+                    <EXECUTABLE-REF DEST="EXECUTABLE">TimeSynchronization</EXECUTABLE-REF>
+                    <!-- Dynamically added to target machine execution manifest by UCM Activate -->
+                    <FUNCTION-GROUP-STATE-IREFS>
+                        <FUNCTION-GROUP-STATE-IREF>
+                            <FUNCTION-GROUP-REF>MachineFG</FUNCTION-GROUP-REF>
+                            <FUNCTION-GROUP-STATE-REF>StartUp</FUNCTION-GROUP-STATE-REF>
+                        </FUNCTION-GROUP-STATE-IREF>
+                    </FUNCTION-GROUP-STATE-IREFS>
+                </PROCESS-DESIGN>
+
+            </ELEMENTS>
+        </AR-PACKAGE>
+    </AR-PACKAGES>
+</AUTOSAR>

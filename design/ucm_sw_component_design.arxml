@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    §3.3.2.5  SW Component Design
+
+    Defines the Adaptive Application SW Components for this project.
+    Platform Functional Clusters (EM, SM, PHM, DM) are excluded — they are
+    not modelled as SWCs at this level per the methodology.
+
+    Components defined here:
+    ─────────────────────────────────────────────────────────────────────────
+    ExtendedVehicle        — publishes VehicleStatus event (heartbeat)
+    WatchdogApplication    — subscribes to VehicleStatus; detects timeouts
+    UpdateConfigManager    — UCM: exposes PackageManagement RPC service
+    VehicleUpdateConfigMgr — VUCM: orchestrates UCM instances (one R-PORT
+                             per target machine UCM)
+
+    Port conventions
+    ─────────────────────────────────────────────────────────────────────────
+    P-PORT  = provided service (server/publisher side)
+    R-PORT  = required service (client/subscriber side)
+-->
+<AUTOSAR xmlns="http://autosar.org/schema/r4.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://autosar.org/schema/r4.0 autosar_00050.xsd">
+    <AR-PACKAGES>
+        <AR-PACKAGE>
+            <SHORT-NAME>SwComponentDesign</SHORT-NAME>
+            <ELEMENTS>
+
+                <!-- ── ExtendedVehicle ─────────────────────────────────────── -->
+                <ADAPTIVE-APPLICATION-SW-COMPONENT-TYPE>
+                    <SHORT-NAME>ExtendedVehicle</SHORT-NAME>
+                    <PORTS>
+                        <!-- Provides VehicleStatus heartbeat events to Watchdog clients -->
+                        <P-PORT-PROTOTYPE>
+                            <SHORT-NAME>VehicleStatus</SHORT-NAME>
+                            <PROVIDED-INTERFACE-TREF DEST="SERVICE-INTERFACE">
+                                VehicleStatusInterface
+                            </PROVIDED-INTERFACE-TREF>
+                        </P-PORT-PROTOTYPE>
+                    </PORTS>
+                </ADAPTIVE-APPLICATION-SW-COMPONENT-TYPE>
+
+                <!-- ── WatchdogApplication ─────────────────────────────────── -->
+                <ADAPTIVE-APPLICATION-SW-COMPONENT-TYPE>
+                    <SHORT-NAME>WatchdogApplication</SHORT-NAME>
+                    <PORTS>
+                        <!-- Subscribes to VehicleStatus events from ExtendedVehicle -->
+                        <R-PORT-PROTOTYPE>
+                            <SHORT-NAME>VehicleStatus</SHORT-NAME>
+                            <REQUIRED-INTERFACE-TREF DEST="SERVICE-INTERFACE">
+                                VehicleStatusInterface
+                            </REQUIRED-INTERFACE-TREF>
+                        </R-PORT-PROTOTYPE>
+                    </PORTS>
+                </ADAPTIVE-APPLICATION-SW-COMPONENT-TYPE>
+
+                <!-- ── UpdateConfigurationManager (UCM) ────────────────────── -->
+                <!--
+                    One instance per machine (UCM_A on Machine A, UCM_B on
+                    Machine B, UCM_C on Machine C). Each exposes the
+                    PackageManagement RPC service and uses:
+                      - FileStorage  (ara::per) to buffer received packages
+                      - KeyValueStorage (ara::per) as the installed-cluster registry
+                -->
+                <ADAPTIVE-APPLICATION-SW-COMPONENT-TYPE>
+                    <SHORT-NAME>UpdateConfigurationManager</SHORT-NAME>
+                    <PORTS>
+                        <!-- Provides PackageManagement RPC interface to VUCM -->
+                        <P-PORT-PROTOTYPE>
+                            <SHORT-NAME>PackageManagement</SHORT-NAME>
+                            <PROVIDED-INTERFACE-TREF DEST="SERVICE-INTERFACE">
+                                PackageManagement
+                            </PROVIDED-INTERFACE-TREF>
+                        </P-PORT-PROTOTYPE>
+                        <!-- Requires FileStorage (ara::per) for package buffering -->
+                        <R-PORT-PROTOTYPE>
+                            <SHORT-NAME>PackageFileStorage</SHORT-NAME>
+                            <REQUIRED-INTERFACE-TREF DEST="SERVICE-INTERFACE">
+                                FileStorageInterface
+                            </REQUIRED-INTERFACE-TREF>
+                        </R-PORT-PROTOTYPE>
+                        <!-- Requires KeyValueStorage (ara::per) for installed-cluster registry -->
+                        <R-PORT-PROTOTYPE>
+                            <SHORT-NAME>ClusterRegistry</SHORT-NAME>
+                            <REQUIRED-INTERFACE-TREF DEST="SERVICE-INTERFACE">
+                                KeyValueStorageInterface
+                            </REQUIRED-INTERFACE-TREF>
+                        </R-PORT-PROTOTYPE>
+                    </PORTS>
+                </ADAPTIVE-APPLICATION-SW-COMPONENT-TYPE>
+
+                <!-- ── VehicleUpdateConfigurationManager (VUCM) ────────────── -->
+                <!--
+                    Single instance on Machine A. Orchestrates UCM instances
+                    directly (one R-PORT per target UCM). No relay chain.
+                    Architecture: VUCM → UCM_A (local) and VUCM → UCM_B (remote).
+                    Phase 2: also VUCM → UCM_C (UNOQ).
+                -->
+                <ADAPTIVE-APPLICATION-SW-COMPONENT-TYPE>
+                    <SHORT-NAME>VehicleUpdateConfigurationManager</SHORT-NAME>
+                    <PORTS>
+                        <!-- Requires PackageManagement from UCM_A (local, same machine) -->
+                        <R-PORT-PROTOTYPE>
+                            <SHORT-NAME>PackageManagementUcmA</SHORT-NAME>
+                            <REQUIRED-INTERFACE-TREF DEST="SERVICE-INTERFACE">
+                                PackageManagement
+                            </REQUIRED-INTERFACE-TREF>
+                        </R-PORT-PROTOTYPE>
+                        <!-- Requires PackageManagement from UCM_B (Machine B, same HW) -->
+                        <R-PORT-PROTOTYPE>
+                            <SHORT-NAME>PackageManagementUcmB</SHORT-NAME>
+                            <REQUIRED-INTERFACE-TREF DEST="SERVICE-INTERFACE">
+                                PackageManagement
+                            </REQUIRED-INTERFACE-TREF>
+                        </R-PORT-PROTOTYPE>
+                        <!-- Phase 2: R-PORT for UCM_C (UNOQ) -->
+                        <R-PORT-PROTOTYPE>
+                            <SHORT-NAME>PackageManagementUcmC</SHORT-NAME>
+                            <REQUIRED-INTERFACE-TREF DEST="SERVICE-INTERFACE">
+                                PackageManagement
+                            </REQUIRED-INTERFACE-TREF>
+                        </R-PORT-PROTOTYPE>
+                    </PORTS>
+                </ADAPTIVE-APPLICATION-SW-COMPONENT-TYPE>
+
+            </ELEMENTS>
+        </AR-PACKAGE>
+    </AR-PACKAGES>
+</AUTOSAR>

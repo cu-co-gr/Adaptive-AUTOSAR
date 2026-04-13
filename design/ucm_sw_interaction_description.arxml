@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    §3.3.2.7  SW Interaction Description — UCM / VUCM Story e
+
+    Documents the connectors between the UCM-related components and the
+    platform functional clusters they depend on. Covers:
+
+    1. VUCM ↔ UCM instances  (ara::com — SOME/IP RPC)
+    2. UCM ↔ EM              (Registry / manifest-file update + EM restart)
+    3. UCM ↔ ara::per        (FileStorage + KeyValueStorage — native API)
+    4. UCM ↔ ara::log        (native API — logging)
+    5. UCM ↔ ara::exec       (native API — ModelledProcess lifecycle)
+
+    Architecture notes (spec §9.7.1, Figure 9.99)
+    ──────────────────────────────────────────────
+    VUCM holds PackageManagement as a REQUIRED port for each target UCM.
+    VUCM calls UCM_A and UCM_B directly — there is NO relay chain.
+
+    Registry (§9.7.3) is NOT a standalone daemon. It is the native
+    ManifestAccessor interface used by all FCs to read ARXML files.
+    In this codebase arxml::ArxmlReader IS the Registry. UCM::Activate
+    updates execution_manifest.arxml on disk; EM re-reads it on next
+    startup. This is spec-compliant.
+-->
+<AUTOSAR xmlns="http://autosar.org/schema/r4.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://autosar.org/schema/r4.0 autosar_00050.xsd">
+    <AR-PACKAGES>
+        <AR-PACKAGE>
+            <SHORT-NAME>UcmSwInteractionDescription</SHORT-NAME>
+            <ELEMENTS>
+
+                <!-- ── 1. VUCM ↔ UCM_A (local, Machine A) ─────────────────── -->
+                <!--
+                    Transport : SOME/IP RPC over TCP
+                    Protocol  : PackageManagement (Service ID 0x00C0)
+                    Endpoint  : 127.0.0.1:8090  (ucm_manifest_a.arxml)
+                    Phase     : Phase 1 (same-box, file path in TransferStart.name)
+                -->
+                <SOMEIP-SERVICE-INTERFACE-DEPLOYMENT>
+                    <SHORT-NAME>VucmToUcmAConnector</SHORT-NAME>
+                    <NOTE>VUCM (Machine A) calls UCM_A on 127.0.0.1:8090 via PackageManagement RPC.
+    Phase 1: TransferStart.name = absolute path to .swpkg file on shared FS.
+    TransferData blocks are empty (size=0). UCM_A verifies file at path on TransferExit.</NOTE>
+                </SOMEIP-SERVICE-INTERFACE-DEPLOYMENT>
+
+                <!-- ── 2. VUCM ↔ UCM_B (Machine B, same physical hardware) ── -->
+                <!--
+                    Transport : SOME/IP RPC over TCP
+                    Protocol  : PackageManagement (Service ID 0x00C0)
+                    Endpoint  : 127.0.0.1:8091  (ucm_manifest_b.arxml)
+                    Phase     : Phase 1 — primary demo target
+                    Phase 2   : 192.168.2.96:8090 when UCM_C (UNOQ) is targeted
+                -->
+                <SOMEIP-SERVICE-INTERFACE-DEPLOYMENT>
+                    <SHORT-NAME>VucmToUcmBConnector</SHORT-NAME>
+                    <NOTE>VUCM (Machine A) calls UCM_B on 127.0.0.1:8091 (Phase 1) or
+    192.168.2.96:8090 (Phase 2 — UNOQ) via PackageManagement RPC.
+    Phase 1 end-to-end: UCM_B on port 8091; VUCM drives the full
+    TransferStart → TransferData → TransferExit → ProcessSwPackage → Activate sequence.</NOTE>
+                </SOMEIP-SERVICE-INTERFACE-DEPLOYMENT>
+
+                <!-- ── 3. UCM ↔ EM (Registry / manifest update) ────────────── -->
+                <!--
+                    This is NOT an ara::com port.
+                    UCM::Activate writes an XML <PROCESS> fragment into the target
+                    machine's execution_manifest.arxml via pugixml.
+                    EM uses arxml::ArxmlReader (= Registry ManifestAccessor) to
+                    read the updated manifest on next startup.
+                    No separate Registry daemon is required.
+                -->
+                <NOTE-ELEMENT>
+                    <SHORT-NAME>UcmToRegistryAndEm</SHORT-NAME>
+                    <NOTE>UCM Activate logic:
+    1. Extract .swpkg.tar.gz → FileStorage staging dir.
+    2. Copy binary to installRoot/bin/.
+    3. Parse manifest/process_entry.xml via pugixml; append PROCESS node
+       to configuration/machine_*/execution_manifest.arxml.
+    4. Update ucm_registry KeyValueStorage (SetValue(name, version)).
+    5. Log "[UCM] Activation complete — restart EM to apply".
+    EM reads updated manifest via arxml::ArxmlReader on next startup
+    (arxml::ArxmlReader IS the Registry ManifestAccessor — no daemon needed).</NOTE>
+                </NOTE-ELEMENT>
+
+                <!-- ── 4. UCM ↔ ara::per (native API) ──────────────────────── -->
+                <!--
+                    FileStorage  → /var/per/ucm_packages/ (or /tmp/per/ucm_packages/)
+                                   Used to buffer received SW Package binary data.
+                    KeyValueStorage → /var/per/ucm_registry.json (or /tmp/per/)
+                                   Stores { swClusterName: version } pairs — the
+                                   local manifestation of the Registry installed-cluster
+                                   list. Read by GetSwClusterInfo().
+                -->
+                <NOTE-ELEMENT>
+                    <SHORT-NAME>UcmToAraPer</SHORT-NAME>
+                    <NOTE>UCM uses two ara::per storage objects (native API, not ara::com port):
+    - FileStorage at /var/per/ucm_packages/ (fallback /tmp/per/ucm_packages/):
+        WriteFile / ReadFile / DeleteFile for SW Package binary data.
+        Atomic writes (tmp + rename) prevent partial-package corruption.
+    - KeyValueStorage at /var/per/ucm_registry.json (fallback /tmp/per/):
+        SetValue(name, version) on Activate; GetAllKeys() for GetSwClusterInfo().
+        SyncToStorage() called after each successful Activate.</NOTE>
+                </NOTE-ELEMENT>
+
+                <!-- ── 5. UCM + VUCM ↔ ara::log (native API) ─────────────── -->
+                <NOTE-ELEMENT>
+                    <SHORT-NAME>UcmToAraLog</SHORT-NAME>
+                    <NOTE>UCM and VUCM log via ara::log::LogStream (native API).
+    Log prefixes: "[UCM] ..." and "[VUCM] ..." for easy grepping in run_demo.sh output.</NOTE>
+                </NOTE-ELEMENT>
+
+                <!-- ── 6. UCM + VUCM ↔ ara::exec (native API) ───────────────  -->
+                <NOTE-ELEMENT>
+                    <SHORT-NAME>UcmToAraExec</SHORT-NAME>
+                    <NOTE>UCM and VUCM are ModelledProcess subclasses:
+    - Constructor: sets up PackageManagementSkeleton / PackageManagementProxy.
+    - Main(): enters WaitForActivation() loop.
+    - Destructor: cleans up proxy/skeleton.
+    No PHM supervised entity needed for UCM/VUCM in this educational deployment.</NOTE>
+                </NOTE-ELEMENT>
+
+            </ELEMENTS>
+        </AR-PACKAGE>
+    </AR-PACKAGES>
+</AUTOSAR>
