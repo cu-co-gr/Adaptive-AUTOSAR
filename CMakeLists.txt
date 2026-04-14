@@ -245,6 +245,15 @@ set(test_ara_phm_supervisors_dir
 set(test_ara_per_dir
   "${CMAKE_SOURCE_DIR}/test/ara/per")
 
+set(source_ara_ucm_dir
+  "${CMAKE_SOURCE_DIR}/src/ara/ucm")
+
+set(test_ara_ucm_dir
+  "${CMAKE_SOURCE_DIR}/test/ara/ucm")
+
+set(source_package_management_gen_dir
+  "${CMAKE_SOURCE_DIR}/src-gen/package_management")
+
 set(test_ara_com_vehicle_status_dir
   "${CMAKE_SOURCE_DIR}/test/ara/com/vehicle_status")
 
@@ -552,12 +561,53 @@ add_library(
   ${source_ara_per_dir}/per_error_domain.cpp
   ${source_ara_per_dir}/key_value_storage.h
   ${source_ara_per_dir}/key_value_storage.cpp
+  ${source_ara_per_dir}/file_storage.h
+  ${source_ara_per_dir}/file_storage.cpp
 )
 
 target_link_libraries(
   ara_per
   ara_core
   jsoncpp_lib
+)
+
+add_library(
+  ara_ucm
+  ${source_ara_ucm_dir}/ucm_error_domain.h
+  ${source_ara_ucm_dir}/ucm_error_domain.cpp
+  ${source_ara_ucm_dir}/package_manager_state.h
+  ${source_ara_ucm_dir}/package_manager.h
+  ${source_ara_ucm_dir}/package_manager.cpp
+)
+
+target_link_libraries(
+  ara_ucm
+  ara_core
+  ara_per
+  arxml
+  jsoncpp_lib
+)
+
+add_library(
+  package_management_gen
+  ${source_package_management_gen_dir}/package_management_types.h
+  ${source_package_management_gen_dir}/package_management_skeleton.h
+  ${source_package_management_gen_dir}/package_management_skeleton.cpp
+  ${source_package_management_gen_dir}/package_management_proxy.h
+  ${source_package_management_gen_dir}/package_management_proxy.cpp
+  ${source_application_helper_dir}/network_configuration.h
+  ${source_application_helper_dir}/network_configuration.cpp
+)
+
+target_include_directories(
+  package_management_gen
+  PUBLIC ${CMAKE_SOURCE_DIR}/src
+)
+
+target_link_libraries(
+  package_management_gen
+  ara_ucm
+  ara_com
 )
 
 add_executable(
@@ -742,6 +792,47 @@ target_link_libraries(
   ara_log
 )
 
+add_executable(
+  update_config_manager
+  ${source_application_platform_dir}/update_config_manager_main.cpp
+  ${source_application_platform_dir}/update_config_manager.h
+  ${source_application_platform_dir}/update_config_manager.cpp
+)
+
+target_include_directories(
+  update_config_manager
+  PRIVATE ${CMAKE_SOURCE_DIR}/src-gen/package_management
+)
+
+target_link_libraries(
+  update_config_manager
+  package_management_gen
+  ara_log
+)
+
+add_executable(
+  vehicle_update_config_manager
+  ${source_application_platform_dir}/vehicle_update_config_manager_main.cpp
+  ${source_application_platform_dir}/vehicle_update_config_manager.h
+  ${source_application_platform_dir}/vehicle_update_config_manager.cpp
+)
+
+target_include_directories(
+  vehicle_update_config_manager
+  PRIVATE ${CMAKE_SOURCE_DIR}/src-gen/package_management
+)
+
+target_link_libraries(
+  vehicle_update_config_manager
+  package_management_gen
+)
+
+add_executable(
+  time_synchronization
+  ${source_application_dir}/time_synchronization.cpp
+  ${source_application_dir}/time_synchronization.h
+)
+
 ########################################################################
 # Installation
 ########################################################################
@@ -756,6 +847,9 @@ install(
     diagnostic_manager
     watchdog_application
     state_management
+    update_config_manager
+    vehicle_update_config_manager
+    time_synchronization
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
                 GROUP_READ GROUP_EXECUTE
@@ -773,6 +867,8 @@ install(
     ara_diag
     ara_phm
     ara_per
+    ara_ucm
+    package_management_gen
     vehicle_status_gen
     async_bsd_socket_lib
     obd_ii_emulator
@@ -820,6 +916,7 @@ if(build_tests)
     ${test_ara_com_someip_rpc_dir}/someip_rpc_message_test.cpp
     ${test_ara_com_someip_rpc_dir}/rpc_server_test.cpp
     ${test_ara_com_someip_rpc_dir}/rpc_client_test.cpp
+    ${test_ara_com_someip_rpc_dir}/rpc_large_payload_test.cpp
     ${test_ara_com_someip_sd_dir}/someip_sd_message_test.cpp
     ${test_ara_com_someip_sd_dir}/network_abstraction_test.cpp
     ${test_ara_com_someip_sd_dir}/someip_sd_test.cpp
@@ -878,12 +975,22 @@ if(build_tests)
     ${test_ara_phm_supervisors_dir}/global_supervision_test.cpp
     ${test_ara_com_vehicle_status_dir}/vehicle_status_data_test.cpp
     ${test_ara_per_dir}/key_value_storage_test.cpp
+    ${test_ara_per_dir}/file_storage_test.cpp
+    ${test_ara_ucm_dir}/ucm_error_domain_test.cpp
+    ${test_ara_ucm_dir}/package_manager_test.cpp
+    ${test_ara_ucm_dir}/package_manager_phase2_test.cpp
+    ${test_ara_ucm_dir}/package_management_skeleton_test.cpp
   )
 
   target_link_libraries(
     arxml_unit_test
     gtest_main
     arxml
+  )
+
+  target_include_directories(
+    ara_unit_test
+    PRIVATE ${CMAKE_SOURCE_DIR}/src-gen/package_management
   )
 
   target_link_libraries(
@@ -896,6 +1003,8 @@ if(build_tests)
     ara_phm
     ara_diag
     ara_per
+    ara_ucm
+    package_management_gen
     vehicle_status_gen
   )
 

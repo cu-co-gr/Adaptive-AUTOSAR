@@ -40,9 +40,9 @@ namespace ara
             }
         }
 
-        // ── reset ─────────────────────────────────────────────────────────────
+        // ── Reset ─────────────────────────────────────────────────────────────
 
-        void PackageManager::reset() noexcept
+        void PackageManager::Reset() noexcept
         {
             mState = UpdateStateType::kIdle;
             mPendingTransfers.clear();
@@ -127,8 +127,10 @@ namespace ara
                         MakeErrorCode(UcmErrc::kTransferNotComplete));
                 }
 
-                // Write assembled package to FileStorage
-                std::string _pkgFileName{_info.name + "-" + _info.version + ".swpkg.tar.gz"};
+                // Write assembled package to FileStorage.
+                // _info.name is the basename without extension
+                // (e.g. "time_sync_placeholder-1.0.0"); append the suffix.
+                std::string _pkgFileName{_info.name + ".swpkg.tar.gz"};
                 if (mStorage)
                 {
                     auto _wr{mStorage->WriteFile(_pkgFileName, _acc)};

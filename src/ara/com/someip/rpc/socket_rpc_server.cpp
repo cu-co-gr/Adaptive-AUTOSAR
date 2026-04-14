@@ -74,12 +74,22 @@ namespace ara
                     }
                 }
 
+                void SocketRpcServer::SetDisconnectHandler(
+                    std::function<void()> handler)
+                {
+                    mDisconnectHandler = std::move(handler);
+                }
+
                 void SocketRpcServer::onReceive()
                 {
                     std::array<uint8_t, cBufferSize> _buffer;
                     ssize_t _receivedSize{mServer.Receive(_buffer)};
                     if (_receivedSize <= 0)
                     {
+                        if (mDisconnectHandler)
+                        {
+                            mDisconnectHandler();
+                        }
                         return;
                     }
 

@@ -1,4 +1,7 @@
 #include <cstdio>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include "./vehicle_update_config_manager.h"
 #include "package_management_proxy.h"
 
@@ -26,17 +29,51 @@ namespace application
 
         int VehicleUpdateConfigManager::Run()
         {
-            // ── Phase 1 workflow ──────────────────────────────────────────────
-            // Package file is already on the shared filesystem; no binary
-            // chunks are sent.  Name = absolute path; size = 0.
+            // ── Phase 2 workflow ──────────────────────────────────────────────
+            // Read the SW package from disk and stream it to UCM in 64 KB chunks
+            // via TransferData RPCs. UCM reassembles and stores the file in its
+            // FileStorage before extracting and activating.
+
+            // Derive the package name (basename without extension) from the path
+            // so UCM can use it as the FileStorage filename prefix.
+            std::string _basename{mPackagePath};
+            const auto _slash{_basename.rfind('/')};
+            if (_slash != std::string::npos)
+            {
+                _basename = _basename.substr(_slash + 1);
+            }
+            // Strip .swpkg.tar.gz (or just .tar.gz) if present
+            for (const auto *_sfx : {".swpkg.tar.gz", ".tar.gz", ".gz"})
+            {
+                const size_t _sfxLen{std::string{_sfx}.size()};
+                if (_basename.size() > _sfxLen &&
+                    _basename.compare(_basename.size() - _sfxLen,
+                                      _sfxLen, _sfx) == 0)
+                {
+                    _basename.erase(_basename.size() - _sfxLen);
+                    break;
+                }
+            }
+
+            // Get file size
+            struct stat _st;
+            if (::stat(mPackagePath.c_str(), &_st) != 0)
+            {
+                std::printf("[VUCM] ERROR: cannot stat package: %s\n",
+                    mPackagePath.c_str());
+                return 1;
+            }
+            const uint64_t _fileSize{static_cast<uint64_t>(_st.st_size)};
 
             ara::ucm::PackageInfoType _info;
-            _info.name    = mPackagePath;
+            _info.name    = _basename;
             _info.version = "1.0.0";
-            _info.size    = 0;
+            _info.size    = _fileSize;
 
             // TransferStart
-            std::printf("[VUCM] TransferStart: %s\n", mPackagePath.c_str());
+            std::printf("[VUCM] TransferStart: %s (%llu bytes)\n",
+                mPackagePath.c_str(),
+                static_cast<unsigned long long>(_fileSize));
             auto _start{mProxy->TransferStart(_info)};
             if (!_start.HasValue())
             {
@@ -47,15 +84,68 @@ namespace application
             ara::ucm::TransferIdType _id{std::move(_start).Value()};
             std::printf("[VUCM] TransferStart OK, id=%u\n", _id);
 
-            // TransferData (empty block — Phase 1 path)
-            auto _data{mProxy->TransferData(_id, {}, 0)};
-            if (!_data.HasValue())
+            // TransferData — stream file in 64 KB chunks
+            static const size_t cChunkSize{65536};
+            int _fd{::open(mPackagePath.c_str(), O_RDONLY)};
+            if (_fd < 0)
             {
-                std::printf("[VUCM] TransferData FAILED (error %llu)\n",
-                    static_cast<unsigned long long>(_data.Error().Value()));
+                std::printf("[VUCM] ERROR: cannot open package file\n");
                 return 1;
             }
-            std::printf("[VUCM] TransferData OK\n");
+
+            const uint32_t _totalChunks{
+                static_cast<uint32_t>((_fileSize + cChunkSize - 1) / cChunkSize)};
+            std::printf("[VUCM] Sending %u chunk(s) (%llu bytes)\n",
+                _totalChunks,
+                static_cast<unsigned long long>(_fileSize));
+
+            uint32_t _blockCounter{1};
+            std::vector<uint8_t> _chunk;
+            _chunk.reserve(cChunkSize);
+
+            bool _readError{false};
+            while (true)
+            {
+                _chunk.resize(cChunkSize);
+                ssize_t _n{::read(_fd, _chunk.data(), cChunkSize)};
+                if (_n < 0)
+                {
+                    std::printf("[VUCM] ERROR: read failed on package file\n");
+                    _readError = true;
+                    break;
+                }
+                if (_n == 0)
+                {
+                    break; // EOF
+                }
+                _chunk.resize(static_cast<size_t>(_n));
+
+                auto _data{mProxy->TransferData(_id, _chunk, _blockCounter)};
+                if (!_data.HasValue())
+                {
+                    std::printf("[VUCM] TransferData FAILED on chunk %u"
+                                " (error %llu)\n",
+                        _blockCounter,
+                        static_cast<unsigned long long>(_data.Error().Value()));
+                    _readError = true;
+                    break;
+                }
+
+                if (_blockCounter % 10 == 0 || _blockCounter == _totalChunks)
+                {
+                    std::printf("[VUCM] Chunk %u/%u\n",
+                        _blockCounter, _totalChunks);
+                }
+                ++_blockCounter;
+            }
+            ::close(_fd);
+
+            if (_readError)
+            {
+                return 1;
+            }
+            std::printf("[VUCM] TransferData OK (%u chunks)\n",
+                _blockCounter - 1);
 
             // TransferExit
             auto _exit{mProxy->TransferExit(_id)};

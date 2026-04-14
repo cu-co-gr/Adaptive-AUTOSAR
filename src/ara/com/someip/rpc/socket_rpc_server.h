@@ -4,6 +4,7 @@
 #include <asyncbsdsocket/poller.h>
 #include "../../helper/concurrent_queue.h"
 #include "./rpc_server.h"
+#include <functional>
 #include <stdexcept>
 #include <cstdint>
 
@@ -29,6 +30,8 @@ namespace ara
                     AsyncBsdSocketLib::Poller *const mPoller;
                     AsyncBsdSocketLib::TcpListener mServer;
 
+                    std::function<void()> mDisconnectHandler;
+
                     void onAccept();
                     void onReceive();
                     void onSend();
@@ -49,6 +52,16 @@ namespace ara
                         uint8_t interfaceVersion = 1);
 
                     virtual ~SocketRpcServer() override;
+
+                    /// @brief Register a callback invoked when the client disconnects.
+                    ///
+                    /// Called once when `recv()` returns 0 or a negative value,
+                    /// indicating the peer closed the connection.  Use this to reset
+                    /// any state that depends on a live client (e.g. UCM in-progress
+                    /// transfer) so the next connection starts clean.
+                    ///
+                    /// @param handler Callable with signature `void()`.
+                    void SetDisconnectHandler(std::function<void()> handler);
                 };
             }
         }

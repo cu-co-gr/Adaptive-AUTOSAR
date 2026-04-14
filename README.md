@@ -14,6 +14,7 @@ Major differences with baseline
     Volvo Extended Vehicle API is stubbed
     Added build toolchain for aarch64
     ara::comm - Introduced skeleton/proxy pattern.
+    ara::per - partially implemented (Key value storage). Implemented as a library (not thread safe)
     extended_vehicle / watchdog_application - Basic applications to enable system concept and machine concept.
 
 ## Dependecies

@@ -97,11 +97,13 @@ namespace ara
             ara::core::Result<std::vector<PackageInfoType>>
             GetSwClusterInfo() const noexcept;
 
-        private:
-            // ── Internal helpers ─────────────────────────────────────────────
+            /// @brief Reset state to kIdle and clear all pending transfer data.
+            ///
+            /// Called by the skeleton when a client disconnects mid-transfer so
+            /// that the next connection starts from a clean state.
+            void Reset() noexcept;
 
-            /// @brief Reset state to kIdle and clear pending transfer maps.
-            void reset() noexcept;
+        private:
 
             // ── Data members ─────────────────────────────────────────────────
 

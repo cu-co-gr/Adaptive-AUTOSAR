@@ -1,3 +1,4 @@
+#include <cstdio>
 #include <functional>
 #include <stdexcept>
 #include "arxml/arxml_reader.h"
@@ -45,6 +46,21 @@ namespace package_management
             _cfg.portNumber,
             _protocolVersion,
             cInterfaceVersion);
+
+        // Reset PackageManager state if the client disconnects mid-transfer
+        // so the next connection starts from a clean kIdle state.
+        mServer->SetDisconnectHandler([this]()
+        {
+            if (mPackageManager->GetCurrentState() !=
+                    ara::ucm::UpdateStateType::kIdle &&
+                mPackageManager->GetCurrentState() !=
+                    ara::ucm::UpdateStateType::kActivated)
+            {
+                std::printf("[UCM] Client disconnected mid-transfer"
+                            " — resetting state\n");
+                mPackageManager->Reset();
+            }
+        });
 
         registerHandlers();
     }
