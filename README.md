@@ -47,6 +47,11 @@ cmake -DCMAKE_BUILD_TYPE:STRING=Debug -DCMAKE_C_COMPILER:FILEPATH=/usr/bin/x86_6
 ```bash
 cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=cmake/aarch64-toolchain.cmake -Dbuild_tests=OFF -S . -B build-aarch64
 ```
+- QCC x_86_64: 
+```cmd
+<QNX SDP PATH>/qnxsdp-env.bat
+cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=cmake/qnx-x86_64-toolchain.cmake -Dbuild_tests=OFF -S . -B build-qnx
+```
 
 ### Compiling
 ```bash

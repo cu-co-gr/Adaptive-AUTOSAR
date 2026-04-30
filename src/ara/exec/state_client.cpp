@@ -42,7 +42,7 @@ namespace ara
             std::promise<void> &promise,
             const com::someip::rpc::SomeIpRpcMessage &message)
         {
-            const std::vector<u_int8_t> &cRpcPayload{message.RpcPayload()};
+            const std::vector<uint8_t> &cRpcPayload{message.RpcPayload()};
 
             if (cRpcPayload.empty())
             {

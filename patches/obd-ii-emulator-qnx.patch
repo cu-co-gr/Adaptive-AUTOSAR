@@ -1,0 +1,76 @@
+--- a/include/obdemulator/serial_communication.h
++++ b/include/obdemulator/serial_communication.h
+@@ -6,5 +6,9 @@
+ #include <queue>
+ #include <future>
+-#include <asm/termbits.h>
++#ifdef __linux__
++#include <asm/termbits.h>
++#else
++#include <termios.h>
++#endif
+ #include "./communication_layer.h"
+ #include "./packet_buffer.h"
+--- a/src/can_frame.cpp
++++ b/src/can_frame.cpp
+@@ -27,6 +27,6 @@
+     }
+
+-    u_int32_t CanFrame::GetId() const noexcept
++    uint32_t CanFrame::GetId() const noexcept
+     {
+         return mId;
+     }
+--- a/src/serial_communication.cpp
++++ b/src/serial_communication.cpp
+@@ -1,4 +1,5 @@
++#ifdef __linux__
+ #include <fcntl.h>
+ #include <errno.h>
+ #include <unistd.h>
+ #include <sys/signalfd.h>
+@@ -307,3 +308,44 @@
+         close(_signalFd);
+     }
+ }
++#endif // __linux__
++
++#ifndef __linux__
++#include <stdexcept>
++#include "../include/obdemulator/serial_communication.h"
++namespace ObdEmulator
++{
++    SerialCommunication::SerialCommunication(
++        std::string serialPort,
++        speed_t baudrate,
++        int timeout) : mSerialPort{serialPort},
++                       mBaudrate{baudrate},
++                       mTimeout{timeout}
++    {
++        throw std::runtime_error(
++            "Serial communication not supported on this platform.");
++    }
++
++    SerialCommunication::~SerialCommunication() {}
++
++    bool SerialCommunication::trySetupCommunication(int &) noexcept
++    {
++        return false;
++    }
++
++    bool SerialCommunication::tryReceive() { return false; }
++
++    bool SerialCommunication::trySend() { return false; }
++
++    void SerialCommunication::tryPoll() {}
++
++    bool SerialCommunication::TryStart(std::vector<uint8_t> &&) { return false; }
++
++    bool SerialCommunication::TrySendAsync(std::vector<uint8_t> &&data)
++    {
++        return mSendBuffer.TryEnqueue(std::move(data));
++    }
++
++    bool SerialCommunication::TryStop() { return false; }
++}
++#endif // !__linux__

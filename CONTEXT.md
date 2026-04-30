@@ -49,11 +49,8 @@ b. Now that we have two physical hosts, communication is fragile as it depends o
    to lower RPC port 18080). Fix options: (a) add SD Client Main phase that reacts to late
    Offers, or (b) increase Repetition timeout in watchdog manifest.
 
-4. CMakeLists.txt is now patching the fetched `async-bsd-socket-lib` dependency (`fifo_sender.h`, `fifo_receiver.h`).
-   This is needed for build-aarch64 and build-qnx.
-   It is also patching poller.h/poller.cpp.  This is indeed a full rewrite found with qnx build. Changes: poller.h — mMutex/mPollFds made mutable, added #include <poll.h>/<vector>; poller.cpp — full epoll→poll() rewrite, TryPoll snapshots mPollFds under lock before calling poll().  
-
-7. test_watchdog_event seems to need cleanup.  the test passes based on the log which suggest that communication side is ok.  Yet the wire analysis fails. Assumption is this is purely test / observation problem and not functional issue.  
+4. CMakeLists.txt is now patching the fetched `async-bsd-socket-lib` dependency (`fifo_sender.h`, `fifo_receiver.h`). This is needed for build-aarch64
+   It is also patching poller.h/poller.cpp.  This is indeed a full rewrite. Found with qnx build. Changes: poller.h — mMutex/mPollFds made mutable, added #include <poll.h>/<vector>; poller.cpp — full epoll→poll() rewrite, TryPoll snapshots mPollFds under lock before calling poll().    
 
 8. deployment package for x86_64 might be useful. it will allow test artifacts from CI builds.
 

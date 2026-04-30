@@ -62,6 +62,7 @@ FetchContent_Declare(
 FetchContent_Declare(
   OBD-II-Emulator
   URL https://github.com/langroodi/OBD-II-Emulator/archive/2c33042a6397d7030f3bafb57b6b88b913d95cb2.zip
+  PATCH_COMMAND patch -p1 --forward --ignore-whitespace -i ${CMAKE_SOURCE_DIR}/patches/obd-ii-emulator-qnx.patch
   EXCLUDE_FROM_ALL
 )
 
@@ -72,6 +73,14 @@ FetchContent_Declare(
   EXCLUDE_FROM_ALL
 )
 
+
+# On QNX 8.0, pthreads are in libc — no separate libpthread exists.
+# Create an empty interface target so sub-dependencies that link 'pthread'
+# by name don't emit -lpthread which the QNX linker cannot find.
+if(CMAKE_SYSTEM_NAME STREQUAL "QNX")
+    add_library(pthread INTERFACE)
+endif()
+
 FetchContent_MakeAvailable(
   googletest
   libcurl
@@ -80,6 +89,13 @@ FetchContent_MakeAvailable(
   OBD-II-Emulator
   Doip-Lib
 )
+
+# On QNX, socket functions (bind, connect, send, recv, etc.) live in
+# libsocket, not libc.  Link it PUBLIC so ara_com and adaptive_autosar
+# both pick it up transitively through async_bsd_socket_lib.
+if(CMAKE_SYSTEM_NAME STREQUAL "QNX")
+    target_link_libraries(async_bsd_socket_lib PUBLIC socket)
+endif()
 
 ########################################################################
 #
