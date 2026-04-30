@@ -107,6 +107,21 @@
                             </FUNCTION-GROUP-STATE-IREF>
                         </FUNCTION-GROUP-STATE-IREFS>
                     </PROCESS>
+                    <PROCESS>
+                        <SHORT-NAME>UpdateConfigManager</SHORT-NAME>
+                        <EXECUTABLE-PATH>./deploy/bin/update_config_manager</EXECUTABLE-PATH>
+                        <BOOTSTRAP>false</BOOTSTRAP>
+                        <PROCESS-ARGUMENTS>
+                            <PROCESS-ARGUMENT>./configuration/machine_c/ucm_manifest.arxml</PROCESS-ARGUMENT>
+                            <PROCESS-ARGUMENT>/tmp/ucm_c</PROCESS-ARGUMENT>
+                        </PROCESS-ARGUMENTS>
+                        <FUNCTION-GROUP-STATE-IREFS>
+                            <FUNCTION-GROUP-STATE-IREF>
+                                <FUNCTION-GROUP-REF>MachineFG</FUNCTION-GROUP-REF>
+                                <FUNCTION-GROUP-STATE-REF>StartUp</FUNCTION-GROUP-STATE-REF>
+                            </FUNCTION-GROUP-STATE-IREF>
+                        </FUNCTION-GROUP-STATE-IREFS>
+                    </PROCESS>
                 </PROCESSES>
             </ELEMENTS>
         </AR-PACKAGE>

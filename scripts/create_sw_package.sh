@@ -52,7 +52,7 @@ EOF
 cat > "${STAGING_DIR}/manifest/process_entry.xml" <<EOF
 <PROCESS>
     <SHORT-NAME>TimeSynchronization</SHORT-NAME>
-    <EXECUTABLE-PATH>./build/bin/time_synchronization</EXECUTABLE-PATH>
+    <EXECUTABLE-PATH>./deploy/bin/time_synchronization</EXECUTABLE-PATH>
     <BOOTSTRAP>false</BOOTSTRAP>
     <FUNCTION-GROUP-STATE-IREFS>
         <FUNCTION-GROUP-STATE-IREF>

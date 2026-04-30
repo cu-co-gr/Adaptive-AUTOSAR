@@ -111,12 +111,12 @@
                         <EXECUTABLE-PATH>./build/bin/vehicle_update_config_manager</EXECUTABLE-PATH>
                         <BOOTSTRAP>false</BOOTSTRAP>
                         <PROCESS-ARGUMENTS>
-                            <!-- target UCM B: same box, port 8091 -->
-                            <PROCESS-ARGUMENT>127.0.0.1</PROCESS-ARGUMENT>
-                            <PROCESS-ARGUMENT>8091</PROCESS-ARGUMENT>
+                            <!-- target UCM C: Machine C (UNOQ), port 8090 -->
+                            <PROCESS-ARGUMENT>192.168.2.96</PROCESS-ARGUMENT>
+                            <PROCESS-ARGUMENT>8090</PROCESS-ARGUMENT>
                             <PROCESS-ARGUMENT>./test_packages/time_sync_placeholder-1.0.0.swpkg.tar.gz</PROCESS-ARGUMENT>
-                            <PROCESS-ARGUMENT>./build/bin</PROCESS-ARGUMENT>
-                            <PROCESS-ARGUMENT>./configuration/machine_b/execution_manifest.arxml</PROCESS-ARGUMENT>
+                            <PROCESS-ARGUMENT>./deploy/bin</PROCESS-ARGUMENT>
+                            <PROCESS-ARGUMENT>./configuration/machine_c/execution_manifest.arxml</PROCESS-ARGUMENT>
                         </PROCESS-ARGUMENTS>
                         <FUNCTION-GROUP-STATE-IREFS>
                             <FUNCTION-GROUP-STATE-IREF>

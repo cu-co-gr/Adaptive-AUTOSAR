@@ -10,10 +10,10 @@ This file extends README.md providing further details, known limitations and TOD
   b. I am using Arduino UNOQ only for hosting and testing machine C. 
   c. I was not able to set SSH connection between Linux server and Arduino UNOQ for file transfer.  This means that if I need to deploy a local build I have to do Linux server -> Windows -> UnoQ (Linux). For now this means I need to run the following command in UNOQ after the copy to allow execution
     chmod +x ./build/bin/*  
-  d. Machine A and Machine B deployed in Linux Server. Machine C deployed in Arduino UNOQ. Ethernet connection is through usb (this is called USB Ethernet gadget or RNDIS/CDC-ECM).
+  d. Machine A and Machine B deployed in Linux Server. Machine C deployed in Arduino UNOQ. Ethernet connection is through usb (this is called USB Ethernet gadget or RNDIS/CDC-ECM).  UNOQ IP address is 192.168.2.96, Linux Server IP is 192.168.2.94
   e. UNOQ's debian build does not come with usb gadget which is needed for ethernet connection between Machine C and Linux Server.  For not this script needs to be run manually after a reboot 
      sudo /usr/local/bin/setup-rndis.sh
-   f. I have seen occassionally the IP dropped in the Linux server. These commands fix the problem if ever happens 
+  f. I have seen occassionally the IP dropped in the Linux server. These commands fix the problem if ever happens 
       sudo systemctl daemon-reload
       sudo systemctl restart systemd-networkd
 
@@ -106,8 +106,9 @@ Steps 0-11 complete (Phase 1). Phase 2 (full binary transfer) complete. Step 12 
 14. We probably want to create a machine manifest to consolidate filesystem information such as /var/per , /tmp/per, tmp/ucm_b/ etc
 15. We probably want to use SIGUSR1 to trigger VUCM/UCM Transfer and Activate scenarios
 16. Machine A and Machine C still need UCM imo, so both become updatable. 
-17. we pobably want to reorganize the folder sturcture to match the deployment view.  
-
+17. we pobably want to reorganize the folder sturcture to match the deployment view. 
+18. create aarch64's time_sync_placeholder-1.0.0.swpkg.tar.gz
+19. 
 
 ## 4. Implementation notes and limitations per functional cluster
 ### Persistency / ara::per
