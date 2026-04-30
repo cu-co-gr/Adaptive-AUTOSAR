@@ -1,0 +1,521 @@
+--- a/include/asyncbsdsocket/poller.h
++++ b/include/asyncbsdsocket/poller.h
+@@ -1,9 +1,11 @@
+ #ifndef POLLER_H
+ #define POLLER_H
+
++#include <poll.h>
+ #include <map>
+ #include <mutex>
+ #include <functional>
++#include <vector>
+ #include "./tcp_listener.h"
+
+ namespace AsyncBsdSocketLib
+@@ -13,8 +15,7 @@ namespace AsyncBsdSocketLib
+     {
+     private:
+-        std::mutex mMutex;
+-        int mFileDescriptor;
+-        size_t mEventCounter;
++        mutable std::mutex mMutex;
++        mutable std::vector<struct pollfd> mPollFds;
+         std::map<int, std::function<void()>> mListeners;
+         std::map<int, std::function<void()>> mSenders;
+         std::map<int, std::function<void()>> mReceivers;
+--- a/src/poller.cpp
++++ b/src/poller.cpp
+@@ -1,256 +1,240 @@
+-#include <unistd.h>
+-#include <sys/epoll.h>
+-#include <cerrno>
+-#include <stdexcept>
+-#include "asyncbsdsocket/poller.h"
++#include <poll.h>
++#include <algorithm>
++#include <cerrno>
++#include <stdexcept>
++#include "asyncbsdsocket/poller.h"
+
+ namespace AsyncBsdSocketLib
+ {
+-    Poller::Poller()
+-    {
+-        mFileDescriptor = epoll_create1(0);
+-
+-        if (mFileDescriptor == -1)
+-        {
+-            throw std::runtime_error("Cannot create the poller");
+-        }
+-
+-        mEventCounter = 0;
+-    }
+-
+-    Poller::~Poller() noexcept
+-    {
+-        close(mFileDescriptor);
+-    }
+-
+-    bool Poller::tryModifyAsSenderReceiver(int connectionDescriptor)
+-    {
+-        struct epoll_event _event;
+-        _event.events = EPOLLIN | EPOLLOUT;
+-        _event.data.fd = connectionDescriptor;
+-
+-        bool _result =
+-            (epoll_ctl(
+-                 mFileDescriptor,
+-                 EPOLL_CTL_MOD,
+-                 connectionDescriptor,
+-                 &_event) >= 0);
+-
+-        return _result;
+-    }
+-
+-    bool Poller::TryAddListener(
+-        TcpListener *tcpListener, std::function<void()> callback)
+-    {
+-        int _socketDescriptor = tcpListener->Descriptor();
+-        struct epoll_event _event;
+-        _event.events = EPOLLIN;
+-        _event.data.fd = _socketDescriptor;
+-
+-        bool _result =
+-            (epoll_ctl(
+-                 mFileDescriptor,
+-                 EPOLL_CTL_ADD,
+-                 _socketDescriptor,
+-                 &_event) >= 0);
+-
+-        if (_result)
+-        {
+-            std::lock_guard<std::mutex> _lock(mMutex);
+-            mListeners[_socketDescriptor] = callback;
+-            ++mEventCounter;
+-        }
+-
+-        return _result;
+-    }
+-
+-    bool Poller::TryAddSender(
+-        Communicator *communicator, std::function<void()> callback)
+-    {
+-        int _connectionDescriptor = communicator->Connection();
+-        struct epoll_event _event;
+-        _event.events = EPOLLOUT;
+-        _event.data.fd = _connectionDescriptor;
+-
+-        bool _result =
+-            (epoll_ctl(
+-                 mFileDescriptor,
+-                 EPOLL_CTL_ADD,
+-                 _connectionDescriptor,
+-                 &_event) >= 0);
+-
+-        if (_result)
+-        {
+-            std::lock_guard<std::mutex> _lock(mMutex);
+-            mSenders[_connectionDescriptor] = callback;
+-            ++mEventCounter;
+-        }
+-        else if (errno == EEXIST &&
+-                 mReceivers.find(_connectionDescriptor) != mReceivers.end())
+-        {
+-            // Try to modify the socket if it has been added already as a receiver
+-            _result = tryModifyAsSenderReceiver(_connectionDescriptor);
+-
+-            if (_result)
+-            {
+-                mSenders[_connectionDescriptor] = callback;
+-            }
+-        }
+-
+-        return _result;
+-    }
+-
+-    bool Poller::TryAddReceiver(
+-        Communicator *communicator, std::function<void()> callback)
+-    {
+-        int _connectionDescriptor = communicator->Connection();
+-        struct epoll_event _event;
+-        _event.events = EPOLLIN | EPOLLET;
+-        _event.data.fd = _connectionDescriptor;
+-
+-        bool _result =
+-            (epoll_ctl(
+-                 mFileDescriptor,
+-                 EPOLL_CTL_ADD,
+-                 _connectionDescriptor,
+-                 &_event) >= 0);
+-
+-        if (_result)
+-        {
+-            std::lock_guard<std::mutex> _lock(mMutex);
+-            mReceivers[_connectionDescriptor] = callback;
+-            ++mEventCounter;
+-        }
+-        else if (errno == EEXIST &&
+-                 mSenders.find(_connectionDescriptor) != mSenders.end())
+-        {
+-            // Try to modify the socket if it has been added already as a sender
+-            _result = tryModifyAsSenderReceiver(_connectionDescriptor);
+-
+-            if (_result)
+-            {
+-                mReceivers[_connectionDescriptor] = callback;
+-            }
+-        }
+-
+-        return _result;
+-    }
+-
+-    bool Poller::TryRemoveListener(TcpListener *tcpListener)
+-    {
+-        // To avoid Linux bug, the event should not be NULL pointer
+-        int _socketDescriptor = tcpListener->Descriptor();
+-        struct epoll_event _event;
+-        _event.events = EPOLLIN;
+-        _event.data.fd = _socketDescriptor;
+-
+-        bool _result =
+-            (epoll_ctl(
+-                 mFileDescriptor,
+-                 EPOLL_CTL_DEL,
+-                 _socketDescriptor,
+-                 &_event) >= 0);
+-
+-        if (_result)
+-        {
+-            std::lock_guard<std::mutex> _lock(mMutex);
+-            mListeners.erase(_socketDescriptor);
+-            --mEventCounter;
+-        }
+-
+-        return _result;
+-    }
+-
+-    bool Poller::TryRemoveSender(Communicator *communicator)
+-    {
+-        // To avoid Linux bug, the event should not be NULL pointer
+-        int _connectionDescriptor = communicator->Connection();
+-        struct epoll_event _event;
+-        _event.events = EPOLLOUT;
+-        _event.data.fd = _connectionDescriptor;
+-
+-        bool _result =
+-            (epoll_ctl(
+-                 mFileDescriptor,
+-                 EPOLL_CTL_DEL,
+-                 _connectionDescriptor,
+-                 &_event) >= 0);
+-
+-        if (_result)
+-        {
+-            std::lock_guard<std::mutex> _lock(mMutex);
+-            mSenders.erase(_connectionDescriptor);
+-            --mEventCounter;
+-        }
+-
+-        return _result;
+-    }
+-
+-    bool Poller::TryRemoveReceiver(Communicator *communicator)
+-    {
+-        // To avoid Linux bug, the event should not be NULL pointer
+-        int _connectionDescriptor = communicator->Connection();
+-        struct epoll_event _event;
+-        _event.events = EPOLLIN | EPOLLET;
+-        _event.data.fd = _connectionDescriptor;
+-
+-        bool _result =
+-            (epoll_ctl(
+-                 mFileDescriptor,
+-                 EPOLL_CTL_DEL,
+-                 _connectionDescriptor,
+-                 &_event) >= 0);
+-
+-        if (_result)
+-        {
+-            std::lock_guard<std::mutex> _lock(mMutex);
+-            mReceivers.erase(_connectionDescriptor);
+-            --mEventCounter;
+-        }
+-
+-        return _result;
+-    }
+-
+-    bool Poller::TryPoll(int timeout) const
+-    {
+-        struct epoll_event _events[mEventCounter];
+-
+-        int _fdNo = epoll_wait(mFileDescriptor, _events, mEventCounter, timeout);
+-
+-        if (_fdNo == -1)
+-        {
+-            return false;
+-        }
+-
+-        for (int i = 0; i < _fdNo; ++i)
+-        {
+-            int _fd = _events[i].data.fd;
+-            uint32_t _event = _events[i].events;
+-
+-            auto _iterator = mListeners.find(_fd);
+-            if (_iterator != mListeners.end())
+-            {
+-                // Launching the callback
+-                (_iterator->second)();
+-            }
+-
+-            _iterator = mSenders.find(_fd);
+-            if (_iterator != mSenders.end() &&
+-                static_cast<EPOLL_EVENTS>(_event & EPOLLOUT) == EPOLLOUT)
+-            {
+-                // Launching the callback
+-                (_iterator->second)();
+-            }
+-
+-            _iterator = mReceivers.find(_fd);
+-            if (_iterator != mReceivers.end() &&
+-                static_cast<EPOLL_EVENTS>(_event & EPOLLIN) == EPOLLIN)
+-            {
+-                // Launching the callback
+-                (_iterator->second)();
+-            }
+-        }
+-
+-        return true;
+-    }
+-}
++    Poller::Poller()
++    {
++    }
++
++    Poller::~Poller() noexcept
++    {
++    }
++
++    bool Poller::tryModifyAsSenderReceiver(int connectionDescriptor)
++    {
++        // Called with mMutex already held by the caller.
++        for (auto &_pfd : mPollFds)
++        {
++            if (_pfd.fd == connectionDescriptor)
++            {
++                _pfd.events |= (POLLIN | POLLOUT);
++                return true;
++            }
++        }
++        return false;
++    }
++
++    bool Poller::TryAddListener(
++        TcpListener *tcpListener, std::function<void()> callback)
++    {
++        int _socketDescriptor = tcpListener->Descriptor();
++
++        std::lock_guard<std::mutex> _lock(mMutex);
++
++        struct pollfd _pfd;
++        _pfd.fd = _socketDescriptor;
++        _pfd.events = POLLIN;
++        _pfd.revents = 0;
++        mPollFds.push_back(_pfd);
++        mListeners[_socketDescriptor] = callback;
++
++        return true;
++    }
++
++    bool Poller::TryAddSender(
++        Communicator *communicator, std::function<void()> callback)
++    {
++        int _connectionDescriptor = communicator->Connection();
++
++        std::lock_guard<std::mutex> _lock(mMutex);
++
++        if (mReceivers.find(_connectionDescriptor) != mReceivers.end())
++        {
++            bool _result = tryModifyAsSenderReceiver(_connectionDescriptor);
++            if (_result)
++            {
++                mSenders[_connectionDescriptor] = callback;
++            }
++            return _result;
++        }
++
++        struct pollfd _pfd;
++        _pfd.fd = _connectionDescriptor;
++        _pfd.events = POLLOUT;
++        _pfd.revents = 0;
++        mPollFds.push_back(_pfd);
++        mSenders[_connectionDescriptor] = callback;
++
++        return true;
++    }
++
++    bool Poller::TryAddReceiver(
++        Communicator *communicator, std::function<void()> callback)
++    {
++        int _connectionDescriptor = communicator->Connection();
++
++        std::lock_guard<std::mutex> _lock(mMutex);
++
++        if (mSenders.find(_connectionDescriptor) != mSenders.end())
++        {
++            bool _result = tryModifyAsSenderReceiver(_connectionDescriptor);
++            if (_result)
++            {
++                mReceivers[_connectionDescriptor] = callback;
++            }
++            return _result;
++        }
++
++        struct pollfd _pfd;
++        _pfd.fd = _connectionDescriptor;
++        _pfd.events = POLLIN;
++        _pfd.revents = 0;
++        mPollFds.push_back(_pfd);
++        mReceivers[_connectionDescriptor] = callback;
++
++        return true;
++    }
++
++    bool Poller::TryRemoveListener(TcpListener *tcpListener)
++    {
++        int _socketDescriptor = tcpListener->Descriptor();
++
++        std::lock_guard<std::mutex> _lock(mMutex);
++
++        auto _it = std::find_if(
++            mPollFds.begin(), mPollFds.end(),
++            [_socketDescriptor](const struct pollfd &_p)
++            { return _p.fd == _socketDescriptor; });
++
++        if (_it == mPollFds.end())
++        {
++            return false;
++        }
++
++        mPollFds.erase(_it);
++        mListeners.erase(_socketDescriptor);
++
++        return true;
++    }
++
++    bool Poller::TryRemoveSender(Communicator *communicator)
++    {
++        int _connectionDescriptor = communicator->Connection();
++
++        std::lock_guard<std::mutex> _lock(mMutex);
++
++        auto _it = std::find_if(
++            mPollFds.begin(), mPollFds.end(),
++            [_connectionDescriptor](const struct pollfd &_p)
++            { return _p.fd == _connectionDescriptor; });
++
++        if (_it == mPollFds.end())
++        {
++            return false;
++        }
++
++        mSenders.erase(_connectionDescriptor);
++
++        if (mReceivers.count(_connectionDescriptor) > 0)
++        {
++            _it->events &= static_cast<short>(~POLLOUT);
++        }
++        else
++        {
++            mPollFds.erase(_it);
++        }
++
++        return true;
++    }
++
++    bool Poller::TryRemoveReceiver(Communicator *communicator)
++    {
++        int _connectionDescriptor = communicator->Connection();
++
++        std::lock_guard<std::mutex> _lock(mMutex);
++
++        auto _it = std::find_if(
++            mPollFds.begin(), mPollFds.end(),
++            [_connectionDescriptor](const struct pollfd &_p)
++            { return _p.fd == _connectionDescriptor; });
++
++        if (_it == mPollFds.end())
++        {
++            return false;
++        }
++
++        mReceivers.erase(_connectionDescriptor);
++
++        if (mSenders.count(_connectionDescriptor) > 0)
++        {
++            _it->events &= static_cast<short>(~POLLIN);
++        }
++        else
++        {
++            mPollFds.erase(_it);
++        }
++
++        return true;
++    }
++
++    bool Poller::TryPoll(int timeout) const
++    {
++        std::vector<struct pollfd> _snapshot;
++        {
++            std::lock_guard<std::mutex> _lock(mMutex);
++            _snapshot = mPollFds;
++        }
++
++        if (_snapshot.empty())
++        {
++            return true;
++        }
++
++        int _fdNo = poll(
++            _snapshot.data(),
++            static_cast<nfds_t>(_snapshot.size()),
++            timeout);
++
++        if (_fdNo == -1)
++        {
++            return false;
++        }
++
++        for (const struct pollfd &_pfd : _snapshot)
++        {
++            if (_pfd.revents == 0)
++            {
++                continue;
++            }
++
++            int _fd = _pfd.fd;
++            short _event = _pfd.revents;
++
++            auto _iterator = mListeners.find(_fd);
++            if (_iterator != mListeners.end())
++            {
++                (_iterator->second)();
++            }
++
++            _iterator = mSenders.find(_fd);
++            if (_iterator != mSenders.end() &&
++                (_event & POLLOUT) == POLLOUT)
++            {
++                (_iterator->second)();
++            }
++
++            _iterator = mReceivers.find(_fd);
++            if (_iterator != mReceivers.end() &&
++                (_event & POLLIN) == POLLIN)
++            {
++                (_iterator->second)();
++            }
++        }
++
++        return true;
++    }
++}
