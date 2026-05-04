@@ -16,6 +16,12 @@ This file extends README.md providing further details, known limitations and TOD
   f. I have seen occassionally the IP dropped in the Linux server. These commands fix the problem if ever happens 
       sudo systemctl daemon-reload
       sudo systemctl restart systemd-networkd
+### 1.1 Annotations about MY environment for Build & Deploy in QNX, semi-automated
+1. QNX Toolkit. Run VM. Issues drop down menu. The default target is vbox-x86_64. IP:192.168.56.106. Double check that IP address is consistent with the configuration/machine_d manifests
+2. Configure build: cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=cmake/qnx-x86_64-toolchain.cmake -S . -B build-qnx
+3. QNX Toolkit. Build Active Project,  Issues a dropdown menu with the configurations from task.json.
+4.a QNX Toolkit. Run as QNX Application (Issues a dropdown menu with the configurations from launch.json) OR 
+4.b QNX Toolkit. Debug as QNX Application (Issues a dropdown menu with the configurations from launch.json)
 
 ### 1.5 Common commands to remember 
 Unpacking in linux: tar xzf adaptive-autosar-aarch64.tar.gz
@@ -65,6 +71,9 @@ b. Now that we have two physical hosts, communication is fragile as it depends o
 19. 
 
 ## 4. Implementation notes and limitations per functional cluster
+### OS Interface
+async-bsd-socket-lib.  This library is patched to match POSIX. This is necessary to build for aarch64 and qnx architectures.
+io-sock - Additionally QNX io-sock does not deliver POLLIN for accepted TCP sockets via `poll()`. The hypothesis is edge-triggered POLLIN: when SM connects and immediately sends data, the POLLIN event fires during `onAccept()` execution (before `TryAddReceiver` completes), so EM never sees it. Subsequent poll() calls see POLLOUT (always ready) but never POLLIN (no new edge event generated). This is consistent with io-sock's message-passing architecture where events may not be re-delivered. The fix pattern (piggybacking recv() on POLLOUT, implemented in socket_rpc_server.cpp) is well-established in edge-triggered I/O programming. ionotify() would be the native QNX mechanism but is platform-specific.
 ### Persistency / ara::per
 Storage files are written to /var/per/ (created on first run). If mkdir returns anything other than EEXIST (i.e., permission denied), they fall back to /tmp/per/
 Documents:
@@ -117,3 +126,22 @@ AUTOSAR_AP_TR_Methodology, 2.9, 2.10, 2.11 SW Packaging
 -unit-test
 --Platform
 --Application
+
+### Workflow: Build & Deploy in QNX, all Manual steps
+1. QNX Toolkit. Run VM target: Double check that IP address is consistent with the configuration/machine_d manifests
+2. cmd. Configure build: cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=cmake/qnx-x86_64-toolchain.cmake -S . -B build-qnx
+3. cmd. Build: cmake --build build-qnx
+4. cmd. Create the deployment package: cmake --install build-qnx --prefix deploy/
+5. cmd. Add deployment configurations and execution script, tar to simplify transfer: tar czf adaptive-autosar-qnx.tar.gz deploy/ configuration/ scripts/run_machine_d.sh
+6. cmd. Copy to target: scp -o "MACs=hmac-sha2-512" adaptive-autosar-qnx.tar.gz root@192.168.56.106:/data/AAP_D/
+7. powershell. Connect to QNX virtual target: ssh -m hmac-sha2-512 root@192.168.56.106
+8. powershell. Navigate to QNX deployment path: cd /data/AAP_D/
+9. powershell. Unpack in the target:  tar xzf adaptive-autosar-qnx.tar.gz
+10. powershell. Enable binary execution: chmod +x /data/AAP_D/deploy/bin/*
+11. powershell. Enable library execution: chmod +x /data/AAP_D/deploy/lib/*
+12. powershell. Update dynamic library path: export LD_LIBRARY_PATH=/data/AAP_D/deploy/lib:$LD_LIBRARY_PATH
+13. powershell. run the application /data/AAP_D/deploy/bin/adaptive_autosar /data/AAP_D/configuration/machine_d/execution_manifest.arxml
+
+### Workflow: Debug in QNX. Manual 
+1. Start with 1.1 Annotations about MY environment for Build & Deploy in QNX, semi-automated. Debug Console will show runtime logs for adaptive_autosar process.  Note that it will show "[Detaching after fork from child pid <state_manager-pid>>]" 
+2. QNX Toolkit Attach debugger to QNX process. Issues drop down menu. Choose state_manager-pid

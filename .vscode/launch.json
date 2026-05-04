@@ -1,0 +1,87 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "qnx-gdb",
+      "request": "launch",
+      "name": "tracelogger",
+      "gdb": "none",
+      "program": "tracelogger",
+      "args": [
+        "-s3",
+        "-w",
+        "-f/dev/shmem/trace.kev"
+      ],
+      "qnxtarget": "default",
+      "upload": false,
+      "files": [
+        {
+          "operation": "download",
+          "remotePath": "/dev/shmem/trace.kev",
+          "hostPath": "trace_${command:qnx.timestamp}.kev"
+        }
+      ]
+    },
+    {
+      "type": "qnx-gdb",
+      "request": "launch",
+      "name": "Run adaptive_autosar",
+      "gdb": "none",
+      "program": "/data/AAP_D/deploy/bin/adaptive_autosar",
+      "upload": false,
+      "qnxtarget": "default",
+      "cwd": "/data/AAP_D",
+      "args": [
+        "/data/AAP_D/configuration/machine_d/execution_manifest.arxml"
+      ],
+      "env": {
+        "LD_LIBRARY_PATH": "/data/AAP_D/deploy/lib"
+      }
+    },
+    {
+      "type": "qnx-gdb",
+      "request": "launch",
+      "name": "Debug adaptive_autosar",
+      "gdb": "gdb",
+      "program": "${workspaceFolder}/deploy/bin/adaptive_autosar",
+      "upload": false,
+      "qnxtarget": "default",
+      "remotePath": "/data/AAP_D/deploy/bin/adaptive_autosar",
+      "cwd": "/data/AAP_D",
+      "args": [
+        "/data/AAP_D/configuration/machine_d/execution_manifest.arxml"
+      ],
+      "env": {
+        "LD_LIBRARY_PATH": "/data/AAP_D/deploy/lib"
+      },
+      "preLaunchTask": "kill leftover processes",
+      "additionalSOLibSearchPath": "${workspaceFolder}/build-qnx/lib",
+      "initCommands": [
+          "set follow-fork-mode parent",
+          "set detach-on-fork on",
+      ]
+    },
+    {
+      "type": "qnx-gdb",
+      "request": "attach",
+      "name": "Attach to state_management",
+      "gdb": "gdb",
+      "program": "${workspaceFolder}/build-qnx/bin/state_management",
+      "remotePath": "state_management",
+      "processId": "${command:qnx.debug.askProcessId}",
+      "qnxtarget": "default",
+      "additionalSOLibSearchPath": "${workspaceFolder}/build-qnx/lib"
+    },
+    {
+      "type": "qnx-gdb",
+      "request": "attach",
+      "name": "Attach to adaptive_autosar",
+      "gdb": "gdb",
+      "program": "${workspaceFolder}/build-qnx/bin/adaptive_autosar",
+      "remotePath": "adaptive_autosar",
+      "processId": "${command:qnx.debug.askProcessId}",
+      "qnxtarget": "default",
+      "additionalSOLibSearchPath": "${workspaceFolder}/build-qnx/lib"
+    }
+  ]
+}

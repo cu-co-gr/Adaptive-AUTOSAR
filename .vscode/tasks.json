@@ -1,0 +1,133 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "1. cmake build",
+      "type": "shell",
+      "command": "C:/Users/famil/qnx800/qnxsdp-env.bat && cmake --build build-qnx",
+      "options": {
+        "shell": {
+          "executable": "cmd.exe",
+          "args": [
+            "/d",
+            "/c"
+          ]
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "2. cmake install",
+      "type": "shell",
+      "command": "C:/Users/famil/qnx800/qnxsdp-env.bat && cmake --install build-qnx --prefix deploy/ --config Debug",
+      "options": {
+        "shell": {
+          "executable": "cmd.exe",
+          "args": [
+            "/d",
+            "/c"
+          ]
+        }
+      },
+      "dependsOn": "1. cmake build",
+      "problemMatcher": []
+    },
+    {
+      "label": "3. deploy to target",
+      "type": "shell",
+      "command": "scp -r -o MACs=hmac-sha2-512 deploy/ root@192.168.56.106:/data/AAP_D/ && scp -r -o MACs=hmac-sha2-512 configuration/ root@192.168.56.106:/data/AAP_D/",
+      "options": {
+        "shell": {
+          "executable": "cmd.exe",
+          "args": [
+            "/d",
+            "/c"
+          ]
+        }
+      },
+      "dependsOn": "2. cmake install",
+      "problemMatcher": []
+    },
+    {
+      "label": "4. set permissions on target",
+      "type": "qnx-shell",
+      "command": "exec",
+      "args": [
+        "sh",
+        "-c",
+        "chmod +x /data/AAP_D/deploy/bin/* /data/AAP_D/deploy/lib/* && export LD_LIBRARY_PATH=/data/AAP_D/deploy/lib:$LD_LIBRARY_PATH"
+      ],
+      "dependsOn": "3. deploy to target"
+    },
+    {
+      "label": "build pipeline",
+      "dependsOn": [
+        "1. cmake build",
+        "2. cmake install",
+        "3. deploy to target",
+        "4. set permissions on target"
+      ],
+      "dependsOrder": "sequence",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "kill leftover processes",
+      "type": "qnx-shell",
+      "command": "exec",
+      "args": [
+        "sh",
+        "-c",
+        "slay -f adaptive_autosar; slay -f state_management; echo done"
+      ]
+    },
+    {
+      "label": "diag: process list",
+      "type": "shell",
+      "command": "ssh -o MACs=hmac-sha2-512 root@192.168.56.106 \"pidin\"",
+      "options": {
+        "shell": {
+          "executable": "cmd.exe",
+          "args": [
+            "/d",
+            "/c"
+          ]
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "diag: stack trace state_management",
+      "type": "shell",
+      "command": "C:/Users/famil/qnx800/qnxsdp-env.bat && ntox86_64-gdb -batch -ex \"target qnx 192.168.56.106:8000\" -ex \"attach ${input:pid}\" -ex \"thread apply all bt\" -ex \"detach\" build-qnx/bin/state_management",
+      "options": {
+        "shell": {
+          "executable": "cmd.exe",
+          "args": [
+            "/d",
+            "/c"
+          ]
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "diag: capture trace 30s",
+      "type": "shell",
+      "command": "ssh -o MACs=hmac-sha2-512 root@192.168.56.106 \"tracelogger -s30 -f/tmp/trace.kev\" && scp -o MACs=hmac-sha2-512 root@192.168.56.106:/tmp/trace.kev trace.kev",
+      "options": {
+        "shell": {
+          "executable": "cmd.exe",
+          "args": [
+            "/d",
+            "/c"
+          ]
+        }
+      },
+      "problemMatcher": []
+    }
+  ]
+}

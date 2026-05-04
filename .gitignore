@@ -1,8 +1,13 @@
 # Visual Studio Code settings
-.vscode/
+.vscode/c_cpp_properties.json
+.vscode/preinclude.h
+.vscode/qnx_properties.json
+.vscode/settings.json
 
 # CMake build
 build/
+build-*/
+deploy/
 
 # Doxygen HTML
 doc/html/
@@ -12,8 +17,14 @@ doc/html/
 memory/
 
 # Reference PDFs and large assets
+doc/input/
 doc/autosar_specs/
 doc/LearningPath.md
 
 # Ad-hoc test output
 Testing/
+
+#QNX Virtual Machine files
+local/
+output/
+ssh/
