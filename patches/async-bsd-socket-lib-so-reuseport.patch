@@ -1,0 +1,24 @@
+--- a/src/tcp_listener.cpp
++++ b/src/tcp_listener.cpp
+@@ -35,9 +35,20 @@
+             _result =
+                 (setsockopt(
+                      FileDescriptor,
+-                     SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT,
++                     SOL_SOCKET, SO_REUSEADDR,
+                      &_opt,
+                      sizeof(_opt)) == 0);
++#ifdef SO_REUSEPORT
++            if (_result)
++            {
++                _result =
++                    (setsockopt(
++                         FileDescriptor,
++                         SOL_SOCKET, SO_REUSEPORT,
++                         &_opt,
++                         sizeof(_opt)) == 0);
++            }
++#endif
+
+             if (_result)
+             {

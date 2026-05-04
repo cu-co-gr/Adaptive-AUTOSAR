@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    §3.10.2.6  Service Instance Manifest — WatchdogApplication (Machine A)
+
+    Machine A watchdog subscribes to Machine B's ExtendedVehicle service
+    (Instance ID 1). Explicit instance ID ensures cross-machine monitoring only.
+
+    Consumed by: argument_configuration.cpp ("--watchdog" argument key)
+    C++ realisation: application::WatchdogApplication (PLANNED)
+-->
+<AUTOSAR xmlns="http://autosar.org/schema/r4.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://autosar.org/schema/r4.0 autosar_00050.xsd">
+    <AR-PACKAGES>
+        <AR-PACKAGE>
+            <SHORT-NAME>WatchdogManifest</SHORT-NAME>
+            <ELEMENTS>
+                <REQUIRED-SOMEIP-SERVICE-INSTANCE>
+                    <SERVICE-INTERFACE-DEPLOYMENT>
+                        <SERVICE-INTERFACE-ID>5</SERVICE-INTERFACE-ID>
+                        <SERVICE-INTERFACE-VERSION>
+                            <MAJOR-VERSION>1</MAJOR-VERSION>
+                            <MINOR-VERSION>0</MINOR-VERSION>
+                        </SERVICE-INTERFACE-VERSION>
+                    </SERVICE-INTERFACE-DEPLOYMENT>
+                    <REQUIRED-EVENT-GROUPS>
+                        <SOMEIP-REQUIRED-EVENT-GROUP>
+                            <EVENT-GROUP-ID>1</EVENT-GROUP-ID>
+                            <IPV-4-MULTICAST-IP-ADDRESS>239.0.0.1</IPV-4-MULTICAST-IP-ADDRESS>
+                            <EVENT-MULTICAST-UDP-PORT>5555</EVENT-MULTICAST-UDP-PORT>
+                        </SOMEIP-REQUIRED-EVENT-GROUP>
+                    </REQUIRED-EVENT-GROUPS>
+                    <SD-CLIENT-CONFIG>
+                        <INITIAL-FIND-BEHAVIOR>
+                            <INITIAL-DELAY-MIN-VALUE>100</INITIAL-DELAY-MIN-VALUE>
+                            <INITIAL-DELAY-MAX-VALUE>200</INITIAL-DELAY-MAX-VALUE>
+                        </INITIAL-FIND-BEHAVIOR>
+                    </SD-CLIENT-CONFIG>
+                    <!-- Machine A watches Machine B: Instance ID 1 -->
+                    <SERVICE-INSTANCE-ID>1</SERVICE-INSTANCE-ID>
+                    <!-- Machine A is itself instance 0 -->
+                    <WATCHDOG-INSTANCE-ID>0</WATCHDOG-INSTANCE-ID>
+                </REQUIRED-SOMEIP-SERVICE-INSTANCE>
+            </ELEMENTS>
+        </AR-PACKAGE>
+    </AR-PACKAGES>
+</AUTOSAR>

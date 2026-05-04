@@ -2,6 +2,7 @@
 #include <chrono>
 #include <csignal>
 #include <future>
+#include <iostream>
 #include <map>
 #include <string>
 #include <thread>
@@ -26,7 +27,14 @@ void performPolling()
 
     while (running)
     {
-        poller.TryPoll();
+        try
+        {
+            poller.TryPoll();
+        }
+        catch (const std::exception &ex)
+        {
+            std::cerr << "[EM polling] exception: " << ex.what() << "\n" << std::flush;
+        }
         std::this_thread::sleep_for(cSleepDuration);
     }
 }

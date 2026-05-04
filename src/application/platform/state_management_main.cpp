@@ -37,7 +37,14 @@ int main(int argc, char *argv[])
 
     while (gRunning)
     {
-        _poller.TryPoll();
+        try
+        {
+            _poller.TryPoll();
+        }
+        catch (const std::exception &ex)
+        {
+            std::cerr << "[SM polling] exception: " << ex.what() << "\n" << std::flush;
+        }
         std::this_thread::sleep_for(cCycleDelay);
     }
 
