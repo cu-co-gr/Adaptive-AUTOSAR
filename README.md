@@ -3,6 +3,8 @@
 This project is a playground for Adaptive Autosar Methodology use cases. At the same time this serves as playground to test development workflows with AI Agents, aiming to understand its capabilities and limitations to develop safety critical systems. 
 
 System Concept - Two or more Machines interconnected over SOME/IP
+![System Concept](https://github.com/cu-co-gr/Adaptive-AUTOSAR/blob/master/design/system_design.png)
+
 Machine Concept - Adaptive Platform with one or more Adaptive Applications deployed in one of the following: 
     a. Virtual Target - Linux Server (Ubuntu 24.04.4, Intel/AMD 64-bit, x86_64)
     b. Embedded Target - Arduino UNOQ (Debian GNU/Linux 13 (trixie), ARM Cortex-A53, aarch64)
