@@ -1,0 +1,28 @@
+@startuml adaptive_autosar_topology
+
+node "Adaptive AUTOSAR System" as vehicle {
+
+    node "Linux Server\nUbuntu 24.04.2 LTS\n192.168.2.94" as linux {
+        node "machine_a  (gateway)\nport: 18080" as aapa
+        node "machine_b\nport: 18081" as aapb
+
+        node "QEMU · QNX Neutrino 8.0\n192.168.2.20" <<executionEnvironment>> as qemu {
+            node "machine_d\nport: TBD" as aapd
+        }
+
+        interface "br0 bridge\n192.168.2.94/24" as br0
+        interface "enx020000000002\nUSB CDC gadget" as enx
+    }
+
+    node "UNOQ\nDebian GNU/Linux 13 (trixie)\n192.168.2.96" as unoq {
+        node "machine_c" as aapc
+        interface "USB CDC gadget" as usb0
+    }
+}
+
+linux -- br0
+br0 -- qemu
+linux -- enx
+enx -- usb0
+
+@enduml
